@@ -1,4 +1,4 @@
-# KSC Disney Topping Update 
+# KSC Disney Topping Update
 
 A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk checks. It creates signed form links, records one of 28 style answers, receives photos directly into Vercel Blob, stores cycles/submissions in Supabase Postgres, and posts a Slack summary with native Slack photo files in the alert thread. **This version does not use Redis or Upstash.**
 
@@ -23,7 +23,7 @@ The heading and body fonts are **fallbacks**, not verified KSC fonts: Fredoka fo
 
 ## Local development
 
-Requirements: Node.js 20.x and npm.
+Requirements: Node.js 22.x and npm.
 
 ```sh
 npm install
@@ -43,14 +43,14 @@ npm start
 ## GitHub and Vercel deployment
 
 1. Create a GitHub repository and push the contents of this folder (the folder itself is the repository root; do not nest the project one level deeper).
-2. In Vercel, choose **Add New → Project**, import the GitHub repository, select **Next.js** as the Framework Preset, and use Node.js **20.x** in Project Settings → General → Node.js Version.
+2. In Vercel, choose **Add New → Project**, import the GitHub repository, select **Next.js** as the Framework Preset, and use Node.js **22.x** in Project Settings → General → Node.js Version.
 3. Create a **Supabase project**. In Supabase **SQL Editor**, run the complete contents of `supabase/schema.sql` once. This creates the required tables with Row Level Security enabled and no client policies.
 4. In Supabase **Project Settings → API** (or API Keys), copy the Project URL and the server-only `service_role` key. Set them in Vercel as `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not use the anon/publishable key for these server operations, and never expose the service-role key as a `NEXT_PUBLIC_*` variable.
 5. In Vercel **Storage** or **Marketplace**, connect/create a **Vercel Blob** store (adds `BLOB_READ_WRITE_TOKEN`). Photos are stored in Blob; operational records are stored in Supabase.
 6. In **Settings → Environment Variables**, add the variables listed below. Use **Production** for the live app. Add them to **Preview** if preview deployments should be testable, and to **Development** if you use `vercel dev`. For `APP_BASE_URL`, set the public origin of that environment; scheduled jobs should always point at the Production URL. Do not put real values in GitHub or commit `.env.local`.
 7. Click **Deploy**. After adding or changing environment variables later, trigger a **new redeployment**; existing deployments do not receive changed variables.
 8. After deploy, open `https://YOUR-PRODUCTION-DOMAIN/api/health`. It reports booleans for environment-variable presence and a Supabase reachability boolean only; it never returns secret values.
-9. Create the Slack app and schedule cron-job.org as described below. Vercel Cron is deliberately not configured in this repository.
+9. Use the existing Slack app and schedule cron-job.org as described below. Vercel Cron is deliberately not configured in this repository.
 
 ## Supabase database setup
 
@@ -65,12 +65,9 @@ All four tables have Row Level Security enabled and client roles are not granted
 
 ## Slack app setup
 
-1. In Slack, choose **Create New App → From a manifest**, select the workspace, and paste `slack-app-manifest.yaml`.
-2. Review the bot scopes: `chat:write`, `files:write`, and `chat:write.public` (the latter is optional if the bot is invited to the target channel). This app does not subscribe to events and does not enable interactivity or slash commands.
-3. Install the app to the workspace (or reinstall after changing scopes). Copy the **Bot User OAuth Token** (`xoxb-…`) to `SLACK_BOT_TOKEN`.
-4. In `#disney-team`, invite the bot with `/invite @botname` (replace `@botname` with the bot’s actual Slack name). The bot needs access to the alert channel; if `SLACK_RESULTS_CHANNEL_ID` points to a different channel, invite it there too.
-5. Find a channel ID by opening the channel details and copying the ID from the bottom of the About pane, or use Slack's channel details/context menu. Use the ID such as `C0123456789`, not `#disney-team`, as `SLACK_ALERT_CHANNEL_ID`.
-6. Optionally set `SLACK_RESULTS_CHANNEL_ID` to another channel ID. Slack threads belong to a single channel, so the canonical result is always posted as a reply/broadcast in the alert's channel thread. When a different results channel is configured, the app also posts a top-level mirror summary there; native photo files stay in the alert thread. Leave the value empty to keep everything in `SLACK_ALERT_CHANNEL_ID`.
+Use your existing Slack app; this project does not require creating a new app or using the included manifest. Confirm that the bot has `chat:write` and `files:write` scopes (the bot must also be invited to the target channel). Copy its **Bot User OAuth Token** (`xoxb-…`) into Vercel as `SLACK_BOT_TOKEN`; never share or commit the token.
+
+Invite the bot to the alert channel with `/invite @botname`, replacing `@botname` with its actual Slack name. Use the channel ID such as `C0123456789`, not `#channel-name`, for `SLACK_ALERT_CHANNEL_ID`. Optionally set `SLACK_RESULTS_CHANNEL_ID` to another channel ID; if it is empty, results stay in the alert thread. For the temporary test-mode flow below, point `SLACK_ALERT_CHANNEL_ID` at a dedicated testing channel.
 
 ## Environment variables
 
@@ -92,6 +89,7 @@ All four tables have Row Level Security enabled and client roles are not granted
 | `REQUIRE_PHOTO` | No | `true` or `false` | Defaults to `true`. `false`, `0`, `no`, or `off` disables the required-photo check. |
 | `SHOW_BAGS_FIELD` | No | `true` or `false` | Defaults to `true`. Hides the optional bags field when false. |
 | `FORM_LINK_VALID_HOURS` | No | `72` | Defaults to 72; accepted range is 1–8760 hours. |
+| `ENABLE_SLACK_TEST_MODE` | No | `true` only while testing | Defaults to off. Enables a temporary no-database Slack/form test tool; remove the variable and redeploy when testing is complete. |
 
 ### Generating the two secrets
 
@@ -130,6 +128,7 @@ Vercel Cron uses UTC. If you intentionally switch away from cron-job.org, create
 - `POST /api/upload/delete`: authenticated best-effort cleanup used when a worker removes a photo or changes a style to Not Needed.
 - `POST /api/submit`: validates name, location, exactly 28 unique answers, status values, needed-style photos, and bags values. Supabase persistence happens before Slack delivery, so a Slack failure does not discard the submission. A repeated submission replaces the current cycle's saved version and is labelled “Updated submission”.
 - `GET /api/health`: booleans only for configured environment-variable names plus Supabase reachability.
+- `POST /api/test/start` and `POST /api/test/submit`: only active when `ENABLE_SLACK_TEST_MODE=true`; provide a temporary form and Slack thread test without database writes. The test console is at `/test-console`.
 
 If `SLACK_RESULTS_CHANNEL_ID` differs from the alert channel, Slack does not permit replying to a thread in one channel from another channel. To preserve the requested alert-thread reply/broadcast, the app posts the canonical reply (and Slack file attachments) in the alert thread, then mirrors the summary as a top-level message in the configured results channel.
 
@@ -156,6 +155,19 @@ Locations are a comma-separated list such as `Disney CA, Downtown Disney`. The f
 6. Test link expiry using a short `FORM_LINK_VALID_HOURS` in a non-production environment, send a new forced alert, wait until expiry, and confirm the branded expired-link message. Do not shorten the production setting just for this test.
 7. Reopen a submitted link. Confirm the “Already submitted by …” notice. Submit a changed answer again; Slack should label it “Updated submission” and Supabase should contain the latest version.
 8. Optional checks: set `SLACK_ALERT_MENTION` empty to disable the ping; set `REQUIRE_PHOTO=false`; set `SHOW_BAGS_FIELD=false`; and verify the corresponding form behavior in a Preview deployment.
+
+
+## Temporary Slack/form test without Supabase
+
+The temporary test mode is for checking the form UI and Slack alert/reply while Supabase is not configured. It does **not** test Blob photo uploads, database persistence, reminders, or production cron behavior. Test responses are not saved; the temporary link expires after 30 minutes.
+
+1. Set `SLACK_ALERT_CHANNEL_ID` to a dedicated Slack testing channel and invite the existing bot to it.
+2. In Vercel Production Environment Variables, set `ENABLE_SLACK_TEST_MODE=true` and redeploy the test-mode code.
+3. Open `https://YOUR-PRODUCTION-DOMAIN/test-console`. Enter `CRON_SECRET` directly into the page (do not paste it into Slack or chat) and choose **Send test alert to Slack**.
+4. Open the clearly labeled test alert in Slack, then use its button to fill all 28 styles. Photos are disabled. Submit; the result appears as a clearly labeled reply in the same Slack thread but is not saved.
+5. When finished, remove `ENABLE_SLACK_TEST_MODE` from Vercel and redeploy. The test console and test links will then be disabled.
+
+The test trigger uses the `CRON_SECRET` authorization header. Test links are HMAC-signed with `FORM_SECRET`, restricted to the configured alert channel, and expire after 30 minutes. Do not leave test mode enabled longer than needed.
 
 ## Security and operational notes
 

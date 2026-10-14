@@ -18,11 +18,13 @@ const ENV_NAMES = [
   'STYLES_JSON',
   'REQUIRE_PHOTO',
   'SHOW_BAGS_FIELD',
-  'FORM_LINK_VALID_HOURS'
+  'FORM_LINK_VALID_HOURS',
+  'ENABLE_SLACK_TEST_MODE'
 ];
 
 export async function GET() {
   const env = Object.fromEntries(ENV_NAMES.map((name) => [name, Boolean(process.env[name]?.trim())]));
+  env.ENABLE_SLACK_TEST_MODE = process.env.ENABLE_SLACK_TEST_MODE?.trim().toLowerCase() === 'true';
   let supabaseReachable = false;
   try {
     const { error } = await getSupabase()

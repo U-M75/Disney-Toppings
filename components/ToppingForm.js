@@ -26,7 +26,8 @@ export default function ToppingForm({
   todayLabel,
   requirePhoto,
   showBagsField,
-  existingSubmission
+  existingSubmission,
+  testMode = false
 }) {
   const draftKey = useMemo(() => `ksc-topping-update:draft:${token}`, [token]);
   const [form, setForm] = useState(() => ({
@@ -217,7 +218,7 @@ export default function ToppingForm({
     });
 
     try {
-      const response = await fetch('/api/submit', {
+      const response = await fetch(testMode ? '/api/test/submit' : '/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, name, location: form.location, answers })
@@ -256,9 +257,11 @@ export default function ToppingForm({
         </div>
         <section className="success-card" role="status" aria-live="polite">
           <div className="success-sparkles" aria-hidden="true">✨ 💖 🍬</div>
-          <p className="eyebrow">{success.updated ? 'Update refreshed' : 'Topping update received'}</p>
-          <h1>{success.updated ? 'Your update is all refreshed!' : 'You made our day!'}</h1>
-          <p className="success-intro">Thanks, {form.name.trim() || 'team member'}! Your kiosk update has been saved.</p>
+          <p className="eyebrow">{testMode ? 'Temporary test complete' : success.updated ? 'Update refreshed' : 'Topping update received'}</p>
+          <h1>{testMode ? 'Slack test delivered!' : success.updated ? 'Your update is all refreshed!' : 'You made our day!'}</h1>
+          <p className="success-intro">{testMode
+            ? `Thanks, ${form.name.trim() || 'team member'}! Your test answers were sent to Slack but were not saved.`
+            : `Thanks, ${form.name.trim() || 'team member'}! Your kiosk update has been saved.`}</p>
           <div className="summary-pills">
             <span className="summary-pill needed-pill">🔴 {summary.neededCount || 0} Needed</span>
             <span className="summary-pill">✅ {summary.notNeededCount || 0} Not Needed</span>
@@ -276,7 +279,7 @@ export default function ToppingForm({
           <p className="submitted-at">Submitted {summary.submittedAtLabel ? `at ${summary.submittedAtLabel}` : 'successfully'}.</p>
           {slack.status === 'failed' && <p className="delivery-warning" role="alert">{slack.error || 'Saved successfully, but Slack could not be notified. Please tell your manager.'}</p>}
           {slack.warning && <p className="delivery-warning" role="status">{slack.warning}</p>}
-          {slack.status === 'posted' && !slack.warning && <p className="delivery-success">Your update has been shared with the restock team. Thank you! 💕</p>}
+          {slack.status === 'posted' && !slack.warning && <p className="delivery-success">{testMode ? 'The test response was posted in the Slack test thread. No database record was created.' : 'Your update has been shared with the restock team. Thank you! 💕'}</p>}
         </section>
       </main>
     );
@@ -292,11 +295,18 @@ export default function ToppingForm({
       <header className="form-hero">
         <div className="hero-decoration hero-heart" aria-hidden="true">♡</div>
         <div className="hero-decoration hero-sparkle" aria-hidden="true">✦</div>
-        <p className="eyebrow">{cycleLabel}</p>
+        <p className="eyebrow">{testMode ? 'Temporary test — not saved' : cycleLabel}</p>
         <h1>Topping Update</h1>
-        <p>Let the restock team know what the kiosk needs. It takes about 3 minutes. ✨</p>
-        <span className="hero-badge">Disney CA kiosk · quick check-in</span>
+        <p>{testMode ? 'Test the form and Slack reply. Responses are not saved and photos are disabled.' : 'Let the restock team know what the kiosk needs. It takes about 3 minutes. ✨'}</p>
+        <span className="hero-badge">{testMode ? '🧪 Test only · no database save' : 'Disney CA kiosk · quick check-in'}</span>
       </header>
+
+      {testMode && (
+        <div className="test-mode-notice" role="note">
+          <span aria-hidden="true">🧪</span>
+          <p><strong>Temporary test only.</strong> Submitting posts a clearly labeled reply to Slack; nothing is saved to the database. Photo uploads are disabled.</p>
+        </div>
+      )}
 
       {existingSubmission && (
         <div className="already-submitted" role="note">
@@ -371,7 +381,7 @@ export default function ToppingForm({
             <div>
               <p className="eyebrow">One quick look around</p>
               <h2 id="styles-title">How is each style?</h2>
-              <p className="section-help">Choose Needed or Not Needed for all 28 styles. Add a photo for every style marked Needed.</p>
+              <p className="section-help">{testMode ? 'Choose Needed or Not Needed for all 28 styles. Photos are disabled in this test.' : 'Choose Needed or Not Needed for all 28 styles. Add a photo for every style marked Needed.'}</p>
             </div>
             <span className="section-heart" aria-hidden="true">✧</span>
           </div>
@@ -389,6 +399,7 @@ export default function ToppingForm({
                 token={token}
                 requirePhoto={requirePhoto}
                 showBagsField={showBagsField}
+                testMode={testMode}
                 onStatusChange={onStatusChange}
                 onPhotoChange={onPhotoChange}
                 onBagsChange={onBagsChange}

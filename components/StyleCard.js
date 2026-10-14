@@ -9,6 +9,7 @@ export default function StyleCard({
   token,
   requirePhoto,
   showBagsField,
+  testMode = false,
   onStatusChange,
   onPhotoChange,
   onBagsChange,
@@ -49,18 +50,25 @@ export default function StyleCard({
             <span aria-hidden="true">💖</span>
             <strong>Restock this style</strong>
           </div>
-          <div className="field">
-            <span className="field-label">Photo {requirePhoto ? <span className="required-word">(required)</span> : <span className="optional-word">(optional)</span>}</span>
-            <PhotoUploader
-              token={token}
-              styleId={style.id}
-              styleName={style.name}
-              photoUrl={answer.photoUrl || ''}
-              required={requirePhoto}
-              onChange={(url) => onPhotoChange(style.id, url)}
-              onUploadingChange={onUploadingChange}
-            />
-          </div>
+          {testMode ? (
+            <div className="field">
+              <span className="field-label">Photo <span className="optional-word">(disabled for test)</span></span>
+              <p className="test-photo-note">Temporary test mode does not upload photos.</p>
+            </div>
+          ) : (
+            <div className="field">
+              <span className="field-label">Photo {requirePhoto ? <span className="required-word">(required)</span> : <span className="optional-word">(optional)</span>}</span>
+              <PhotoUploader
+                token={token}
+                styleId={style.id}
+                styleName={style.name}
+                photoUrl={answer.photoUrl || ''}
+                required={requirePhoto}
+                onChange={(url) => onPhotoChange(style.id, url)}
+                onUploadingChange={onUploadingChange}
+              />
+            </div>
+          )}
           {showBagsField && (
             <div className="field bags-field">
               <label htmlFor={`bags-${style.id}`}>Bags remaining <span className="optional-word">(optional)</span></label>
