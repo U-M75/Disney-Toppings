@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { getAppTimezone, getLocations, getRequirePhoto, getStyles } from '../../../lib/config';
-import { getRedis, getCycle, getSubmission, getAllowedBlob, lockKey, saveCycle, saveSubmission } from '../../../lib/redis';
+import { acquireLock, getCycle, getSubmission, getAllowedBlob, getSupabase, releaseLock, saveCycle, saveSubmission } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { cleanPersonName, isSafeVercelBlobUrl } from '../../../lib/validation';
 import { postSubmissionResult, uploadSubmissionPhotos } from '../../../lib/slack';
@@ -30,11 +29,11 @@ export async function POST(request) {
   }
   if (typeof body.token !== 'string') return invalid('This form link is not valid.', { token: 'Refresh the link and try again.' }, 401);
 
-  let redis;
+  let supabase;
   let resolved;
   try {
-    redis = getRedis();
-    resolved = await resolveFormToken(body.token, redis);
+    supabase = getSupabase();
+    resolved = await resolveFormToken(body.token, supabase);
   } catch {
     return json({ ok: false, error: 'The form could not verify your link because the service is temporarily unavailable. Please try again.' }, 503);
   }
@@ -132,27 +131,27 @@ export async function POST(request) {
     return invalid('Please fix the highlighted fields before submitting.', fieldErrors);
   }
 
-  const lock = lockKey('submit', resolved.cycleId);
-  let locked;
+  const lock = `submit:${resolved.cycleId}`;
+  let lockOwner;
   try {
-    locked = await redis.set(lock, randomUUID(), { nx: true, ex: 120 });
+    lockOwner = await acquireLock(supabase, lock, 120);
   } catch {
     return json({ ok: false, error: 'The form could not save right now. Please try again in a moment.' }, 503);
   }
-  if (!locked) return json({ ok: false, error: 'A submission for this cycle is already being processed. Wait a moment and try again.' }, 409);
+  if (!lockOwner) return json({ ok: false, error: 'A submission for this cycle is already being processed. Wait a moment and try again.' }, 409);
 
   try {
-    const currentCycle = await getCycle(redis, resolved.cycleId);
+    const currentCycle = await getCycle(supabase, resolved.cycleId);
     if (!currentCycle) return invalid('This form link has expired. Please ask your manager for a fresh link.', { token: 'Cycle not found.' }, 410);
 
     for (const answer of normalizedAnswers) {
-      if (answer.photoUrl && !await getAllowedBlob(redis, resolved.cycleId, answer.photoUrl)) {
+      if (answer.photoUrl && !await getAllowedBlob(supabase, resolved.cycleId, answer.photoUrl)) {
         fieldErrors[answer.styleId] = 'This photo was not uploaded by this form. Please upload it again.';
       }
     }
     if (Object.keys(fieldErrors).length > 0) return invalid('Please upload the required photos again.', fieldErrors);
 
-    const previousSubmission = await getSubmission(redis, resolved.cycleId);
+    const previousSubmission = await getSubmission(supabase, resolved.cycleId);
     const submittedAt = new Date().toISOString();
     const neededCount = normalizedAnswers.filter((answer) => answer.status === 'needed').length;
     const submission = {
@@ -168,7 +167,7 @@ export async function POST(request) {
     };
 
     try {
-      await saveSubmission(redis, resolved.cycleId, submission);
+      await saveSubmission(supabase, resolved.cycleId, submission);
     } catch {
       return json({ ok: false, error: 'Your update could not be saved because the database is unavailable. Nothing was sent to Slack; please try again.' }, 503);
     }
@@ -182,7 +181,7 @@ export async function POST(request) {
     };
     let cycleWriteWarning = false;
     try {
-      await saveCycle(redis, updatedCycle);
+      await saveCycle(supabase, updatedCycle);
     } catch {
       cycleWriteWarning = true;
     }
@@ -194,7 +193,7 @@ export async function POST(request) {
         photos: posted.photos,
         channel: posted.channel,
         threadTs: posted.threadTs,
-        redis
+        supabase
       });
       const warning = posted.mirrorStatus === 'failed'
         ? 'The threaded update was posted, but the configured results-channel copy could not be posted.'
@@ -203,7 +202,7 @@ export async function POST(request) {
           : photoStatus.status === 'failed'
             ? 'The update was posted, but photo delivery failed. The uploaded photos remain available for retry.'
             : cycleWriteWarning
-              ? 'The update was saved, but the cycle status could not be refreshed in Redis.'
+              ? 'The update was saved, but the cycle status could not be refreshed in Supabase.'
               : null;
       slackStatus = {
         status: 'posted',
@@ -234,11 +233,11 @@ export async function POST(request) {
         submittedAtLabel: formatDateTime(new Date(submittedAt), timezone)
       },
       slack: slackStatus,
-      ...(cycleWriteWarning ? { warning: 'Submission saved; Redis cycle metadata could not be refreshed.' } : {})
+      ...(cycleWriteWarning ? { warning: 'Submission saved; Supabase cycle metadata could not be refreshed.' } : {})
     });
   } catch {
     return json({ ok: false, error: 'The submission could not be completed because the database is temporarily unavailable. Please try again.' }, 503);
   } finally {
-    await redis.del(lock).catch(() => {});
+    await releaseLock(supabase, lock, lockOwner).catch(() => {});
   }
 }

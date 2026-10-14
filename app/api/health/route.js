@@ -1,4 +1,4 @@
-import { getRedis } from '../../../lib/redis';
+import { getSupabase } from '../../../lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +11,8 @@ const ENV_NAMES = [
   'CRON_SECRET',
   'APP_BASE_URL',
   'BLOB_READ_WRITE_TOKEN',
-  'KV_REST_API_URL',
-  'KV_REST_API_TOKEN',
-  'UPSTASH_REDIS_REST_URL',
-  'UPSTASH_REDIS_REST_TOKEN',
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
   'APP_TIMEZONE',
   'LOCATIONS',
   'STYLES_JSON',
@@ -25,15 +23,18 @@ const ENV_NAMES = [
 
 export async function GET() {
   const env = Object.fromEntries(ENV_NAMES.map((name) => [name, Boolean(process.env[name]?.trim())]));
-  let redisReachable = false;
+  let supabaseReachable = false;
   try {
-    await getRedis().ping();
-    redisReachable = true;
+    const { error } = await getSupabase()
+      .from('ksc_cycles')
+      .select('cycle_id', { head: true, count: 'exact' })
+      .limit(1);
+    supabaseReachable = !error;
   } catch {
-    redisReachable = false;
+    supabaseReachable = false;
   }
   return Response.json(
-    { ok: redisReachable, env, redisReachable },
-    { status: redisReachable ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
+    { ok: supabaseReachable, env, supabaseReachable },
+    { status: supabaseReachable ? 200 : 503, headers: { 'Cache-Control': 'no-store' } }
   );
 }

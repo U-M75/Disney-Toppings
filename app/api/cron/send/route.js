@@ -1,6 +1,6 @@
 import { getAppBaseUrl, getAppTimezone, getFormLinkValidHours, getRequiredEnv } from '../../../../lib/config';
 import { checkCronAuthorization } from '../../../../lib/cron-auth';
-import { getRedis, getCycle, latestCycleKey, lockKey, saveCycle } from '../../../../lib/redis';
+import { acquireLock, cleanupOldRecords, getCycle, getSupabase, releaseLock, saveCycle } from '../../../../lib/supabase';
 import { createFormToken } from '../../../../lib/token';
 import { formatExpiryDateTime, getCycleLabel, getPacificDateKey, isSendPacificWindow } from '../../../../lib/time';
 import { postAlertMessage } from '../../../../lib/slack';
@@ -25,7 +25,8 @@ async function handle(request) {
       return json({ ok: true, skipped: true, reason: 'Outside the Thursday/Sunday 11 PM timezone window.' });
     }
 
-    const redis = getRedis();
+    const supabase = getSupabase();
+    await cleanupOldRecords(supabase).catch(() => {});
     const cycleId = getPacificDateKey(now, timezone);
     const force = requestUrl.searchParams.get('force') === '1';
     const currentToken = createFormToken(cycleId);
@@ -33,12 +34,12 @@ async function handle(request) {
     const channel = getRequiredEnv('SLACK_ALERT_CHANNEL_ID');
     const hours = getFormLinkValidHours();
     const expiresAtMs = now.getTime() + hours * 60 * 60 * 1000;
-    const lock = lockKey('send', cycleId);
-    const lockResult = await redis.set(lock, String(now.getTime()), { nx: true, ex: 90 });
-    if (!lockResult) return json({ ok: true, skipped: true, reason: 'A send for this cycle is already processing.', cycleId });
+    const lock = `send:${cycleId}`;
+    const lockOwner = await acquireLock(supabase, lock, 90);
+    if (!lockOwner) return json({ ok: true, skipped: true, reason: 'A send for this cycle is already processing.', cycleId });
 
     try {
-      const previous = await getCycle(redis, cycleId);
+      const previous = await getCycle(supabase, cycleId);
       if (previous && !force) {
         return json({
           ok: true,
@@ -63,7 +64,7 @@ async function handle(request) {
         reminderSentAt: previous?.reminderSentAt || null,
         status: 'sending'
       };
-      await saveCycle(redis, cycle, true);
+      await saveCycle(supabase, cycle);
 
       try {
         const posted = await postAlertMessage({ channel, formUrl, expiresAt: expiresAtMs });
@@ -75,7 +76,7 @@ async function handle(request) {
           alertSentAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        await saveCycle(redis, activeCycle, true);
+        await saveCycle(supabase, activeCycle);
         return json({
           ok: true,
           posted: true,
@@ -88,7 +89,7 @@ async function handle(request) {
         });
       } catch {
         const failedCycle = { ...cycle, status: 'alert_failed', updatedAt: new Date().toISOString() };
-        await saveCycle(redis, failedCycle, true).catch(() => {});
+        await saveCycle(supabase, failedCycle).catch(() => {});
         return json({
           ok: false,
           posted: false,
@@ -97,12 +98,12 @@ async function handle(request) {
         }, 502);
       }
     } finally {
-      await redis.del(lock).catch(() => {});
+      await releaseLock(supabase, lock, lockOwner).catch(() => {});
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The alert could not be prepared.';
     const isConfiguration = /required|must be|credentials|STYLES_JSON/i.test(message);
-    return json({ ok: false, error: isConfiguration ? message : 'The alert could not be prepared because Redis or the application configuration is unavailable.' }, isConfiguration ? 500 : 503);
+    return json({ ok: false, error: isConfiguration ? message : 'The alert could not be prepared because Supabase or the application configuration is unavailable.' }, isConfiguration ? 500 : 503);
   }
 }
 

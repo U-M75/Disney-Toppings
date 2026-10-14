@@ -1,7 +1,7 @@
 import BrandedMessage from '../../../components/BrandedMessage';
 import ToppingForm from '../../../components/ToppingForm';
 import { getAppTimezone, getLocations, getRequirePhoto, getShowBagsField, getStyles } from '../../../lib/config';
-import { getRedis, getSubmission } from '../../../lib/redis';
+import { getSubmission, getSupabase } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { formatDateLabel, formatDateTime } from '../../../lib/time';
 
@@ -9,11 +9,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function FormPage({ params }) {
   const token = params?.token;
-  let redis;
+  let supabase;
   let resolved;
   try {
-    redis = getRedis();
-    resolved = await resolveFormToken(token, redis);
+    supabase = getSupabase();
+    resolved = await resolveFormToken(token, supabase);
   } catch {
     return (
       <BrandedMessage
@@ -45,7 +45,7 @@ export default async function FormPage({ params }) {
     const styles = getStyles();
     const locations = getLocations();
     const [submission, todayLabel] = await Promise.all([
-      getSubmission(redis, resolved.cycleId),
+      getSubmission(supabase, resolved.cycleId),
       Promise.resolve(formatDateLabel(new Date(), timezone))
     ]);
     let existingSubmission = null;

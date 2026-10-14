@@ -1,6 +1,6 @@
 import { handleUpload } from '@vercel/blob/client';
 import { ALLOWED_IMAGE_TYPES, getRequiredEnv } from '../../../lib/config';
-import { getRedis, registerBlobUrl } from '../../../lib/redis';
+import { getSupabase, registerBlobUrl } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { isSafeVercelBlobUrl } from '../../../lib/validation';
 
@@ -29,8 +29,8 @@ export async function POST(request) {
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         const token = typeof clientPayload === 'string' ? clientPayload : '';
-        const redis = getRedis();
-        const resolved = await resolveFormToken(token, redis);
+        const supabase = getSupabase();
+        const resolved = await resolveFormToken(token, supabase);
         if (!resolved.ok) throw new Error(resolved.reason === 'expired' ? 'This form link has expired.' : 'This form link is not valid.');
         const fileName = String(pathname || '').split('/').pop() || '';
         if (!/^[A-Za-z0-9_.-]{1,180}$/.test(fileName)) throw new Error('The photo file name was not accepted.');
@@ -44,8 +44,8 @@ export async function POST(request) {
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         const payload = JSON.parse(tokenPayload || '{}');
         if (!payload.cycleId || !isSafeVercelBlobUrl(blob?.url)) throw new Error('The uploaded photo could not be verified.');
-        const redis = getRedis();
-        await registerBlobUrl(redis, payload.cycleId, blob.url);
+        const supabase = getSupabase();
+        await registerBlobUrl(supabase, payload.cycleId, blob.url);
       }
     });
     return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
@@ -54,6 +54,6 @@ export async function POST(request) {
     const safeMessage = /expired|not valid|not accepted|could not be verified/i.test(message)
       ? message
       : 'The photo could not be authorized for upload. Please try again.';
-    return uploadError(safeMessage, /Redis credentials|FORM_SECRET/.test(message) ? 503 : 400);
+    return uploadError(safeMessage, /Supabase|SUPABASE_|FORM_SECRET|database_error/i.test(message) ? 503 : 400);
   }
 }

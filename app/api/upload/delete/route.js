@@ -1,5 +1,5 @@
 import { del } from '@vercel/blob';
-import { getRedis, getAllowedBlob, removeAllowedBlob } from '../../../../lib/redis';
+import { getAllowedBlob, getSupabase, removeAllowedBlob } from '../../../../lib/supabase';
 import { resolveFormToken } from '../../../../lib/token';
 import { isSafeVercelBlobUrl } from '../../../../lib/validation';
 
@@ -18,15 +18,15 @@ export async function POST(request) {
   }
 
   try {
-    const redis = getRedis();
-    const resolved = await resolveFormToken(body?.token, redis);
+    const supabase = getSupabase();
+    const resolved = await resolveFormToken(body?.token, supabase);
     if (!resolved.ok) return Response.json({ ok: false, error: 'This form link is no longer valid.' }, { status: 401 });
     const url = body?.url;
-    if (!isSafeVercelBlobUrl(url) || !await getAllowedBlob(redis, resolved.cycleId, url)) {
+    if (!isSafeVercelBlobUrl(url) || !await getAllowedBlob(supabase, resolved.cycleId, url)) {
       return Response.json({ ok: false, error: 'That photo cannot be removed by this form.' }, { status: 403 });
     }
     await del(url);
-    await removeAllowedBlob(redis, url);
+    await removeAllowedBlob(supabase, url);
     return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ ok: false, error: 'The photo could not be removed right now.' }, { status: 503 });
