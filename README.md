@@ -1,4 +1,4 @@
-# KSC Disney Topping Update
+# KSC Disney Topping Update 
 
 A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk checks. It creates signed form links, records one of 28 style answers, receives photos directly into Vercel Blob, stores cycles/submissions in Supabase Postgres, and posts a Slack summary with native Slack photo files in the alert thread. **This version does not use Redis or Upstash.**
 
