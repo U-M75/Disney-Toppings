@@ -253,12 +253,12 @@ export default function ToppingForm({
       <main className="form-shell">
         <div className="brand-row">
           <img className="brand-logo" src="/ksc-logo.svg" alt="KSC" />
-          <span className="brand-caption">Kawaii Slime Company · Disney CA</span>
+          <span className="brand-caption">Kawaii Slime Company · Kiosk Update</span>
         </div>
         <section className="success-card" role="status" aria-live="polite">
           <div className="success-sparkles" aria-hidden="true">✨ 💖 🍬</div>
-          <p className="eyebrow">{testMode ? 'Temporary test complete' : success.updated ? 'Update refreshed' : 'Topping update received'}</p>
-          <h1>{testMode ? 'Slack test delivered!' : success.updated ? 'Your update is all refreshed!' : 'You made our day!'}</h1>
+          <p className="eyebrow">{testMode ? 'Temporary test complete' : success.updated ? 'Submission updated' : 'Update submitted'}</p>
+          <h1>{testMode ? 'Slack test delivered' : success.updated ? 'Your update was updated' : 'Your update was submitted'}</h1>
           <p className="success-intro">{testMode
             ? `Thanks, ${form.name.trim() || 'team member'}! Your test answers were sent to Slack but were not saved.`
             : `Thanks, ${form.name.trim() || 'team member'}! Your kiosk update has been saved.`}</p>
@@ -289,7 +289,7 @@ export default function ToppingForm({
     <main className="form-shell">
       <div className="brand-row">
         <img className="brand-logo" src="/ksc-logo.svg" alt="KSC" />
-        <span className="brand-caption">Kawaii Slime Company · Disney CA</span>
+        <span className="brand-caption">Kawaii Slime Company · Kiosk Update</span>
       </div>
 
       <header className="form-hero">
@@ -297,8 +297,8 @@ export default function ToppingForm({
         <div className="hero-decoration hero-sparkle" aria-hidden="true">✦</div>
         <p className="eyebrow">{testMode ? 'Temporary test — not saved' : cycleLabel}</p>
         <h1>Topping Update</h1>
-        <p>{testMode ? 'Test the form and Slack reply. Responses are not saved and photos are disabled.' : 'Let the restock team know what the kiosk needs. It takes about 3 minutes. ✨'}</p>
-        <span className="hero-badge">{testMode ? '🧪 Test only · no database save' : 'Disney CA kiosk · quick check-in'}</span>
+        <p>{testMode ? 'Test the form and Slack reply. Responses are not saved and photos are disabled.' : 'Review the kiosk and report which toppings need restocking.'}</p>
+        <span className="hero-badge">{testMode ? '🧪 Test only · no database save' : 'Kiosk · quick check-in'}</span>
       </header>
 
       {testMode && (
@@ -319,7 +319,7 @@ export default function ToppingForm({
         <section className="form-intro-card" aria-labelledby="details-title">
           <div className="section-heading-row">
             <div>
-              <p className="eyebrow">First, a few details</p>
+              <p className="eyebrow">Team member details</p>
               <h2 id="details-title">Who checked the kiosk?</h2>
             </div>
             <span className="section-heart" aria-hidden="true">♡</span>
@@ -379,8 +379,8 @@ export default function ToppingForm({
         <section className="styles-section" aria-labelledby="styles-title">
           <div className="section-heading-row style-section-heading">
             <div>
-              <p className="eyebrow">One quick look around</p>
-              <h2 id="styles-title">How is each style?</h2>
+              <p className="eyebrow">Topping inventory</p>
+              <h2 id="styles-title">Check each style</h2>
               <p className="section-help">{testMode ? 'Choose Needed or Not Needed for all 28 styles. Photos are disabled in this test.' : 'Choose Needed or Not Needed for all 28 styles. Add a photo for every style marked Needed.'}</p>
             </div>
             <span className="section-heart" aria-hidden="true">✧</span>
@@ -428,7 +428,7 @@ export default function ToppingForm({
           {submitError && <p className="submit-error" role="alert" aria-live="assertive">{submitError}</p>}
         </div>
       </form>
-      <p className="form-footer">Made with a little KSC sparkle <span aria-hidden="true">♡</span></p>
+      <p className="form-footer">KSC · Disney team update</p>
     </main>
   );
 }

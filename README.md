@@ -17,7 +17,7 @@ A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk 
 
 The only supplied color was KSC pink `#FFA8BD`; the additional live-site colors and exact font names were left blank. This project therefore uses a replaceable pastel palette in the `:root` CSS variables at the top of `app/globals.css`: cream/off-white surfaces, dark plum text, pale pink, mint, and lilac accents. It does **not** claim these are the site's complete live palette.
 
-The heading and body fonts are **fallbacks**, not verified KSC fonts: Fredoka for headings and Nunito for body text, loaded through `next/font/google`. Replace those imports in `app/layout.js` when KSC provides its exact font names. No custom font files are included. If custom licensed fonts are supplied, put the `.woff2` files in `public/fonts/`, switch `app/layout.js` to `next/font/local`, and retain the `--font-heading` / `--font-body` variables.
+The interface uses **Nunito** for headings and body text as a compact, readable fallback; KSC's exact brand font has not been verified. It is loaded through `next/font/google`. Replace the import in `app/layout.js` when the approved font is available. No custom font files are included. If licensed fonts are supplied, place their `.woff2` files in `public/fonts/`, switch to `next/font/local`, and retain the `--font-heading` / `--font-body` variables.
 
 `public/ksc-logo.svg` is a simple **KSC placeholder wordmark**, not an official logo. Replace it with the approved KSC artwork at the same path (or update the image references). The reference thumbnails are optional; each default style has no image.
 
@@ -68,6 +68,8 @@ All four tables have Row Level Security enabled and client roles are not granted
 Use your existing Slack app; this project does not require creating a new app or using the included manifest. Confirm that the bot has `chat:write` and `files:write` scopes (the bot must also be invited to the target channel). Copy its **Bot User OAuth Token** (`xoxb-…`) into Vercel as `SLACK_BOT_TOKEN`; never share or commit the token.
 
 Invite the bot to the alert channel with `/invite @botname`, replacing `@botname` with its actual Slack name. Use the channel ID such as `C0123456789`, not `#channel-name`, for `SLACK_ALERT_CHANNEL_ID`. Optionally set `SLACK_RESULTS_CHANNEL_ID` to another channel ID; if it is empty, results stay in the alert thread. For the temporary test-mode flow below, point `SLACK_ALERT_CHANNEL_ID` at a dedicated testing channel.
+
+The Slack alert and result use ten `:pink:` emoji shortcodes as a divider. Slack will render them as pink artwork only if this workspace has a custom emoji named `pink`; otherwise Slack may display the shortcode text.
 
 ## Environment variables
 

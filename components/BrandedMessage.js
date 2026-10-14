@@ -9,7 +9,7 @@ export default function BrandedMessage({ eyebrow = 'KSC Disney team', title, mes
         <p className="message-copy">{message}</p>
         {home && <a className="button button-primary message-home-link" href="/">Back to KSC team page</a>}
       </section>
-      <p className="message-footer">A little KSC sparkle, just for the team <span aria-hidden="true">♡</span></p>
+      <p className="message-footer">KSC · Disney team resources</p>
     </main>
   );
 }

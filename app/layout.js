@@ -1,14 +1,7 @@
-import { Fredoka, Nunito } from 'next/font/google';
+import { Nunito } from 'next/font/google';
 import './globals.css';
 
-const headingFont = Fredoka({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-heading',
-  display: 'swap'
-});
-
-const bodyFont = Nunito({
+const appFont = Nunito({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-body',
@@ -17,7 +10,7 @@ const bodyFont = Nunito({
 
 export const metadata = {
   title: 'KSC Disney Topping Update',
-  description: 'A friendly KSC kiosk topping check-in for the Disney team.',
+  description: 'A concise KSC kiosk topping check-in for the Disney team.',
   applicationName: 'KSC Disney Topping Update'
 };
 
@@ -31,7 +24,7 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="robots" content="noindex, nofollow" />
       </head>
-      <body className={`${headingFont.variable} ${bodyFont.variable}`}>{children}</body>
+      <body className={appFont.variable}>{children}</body>
     </html>
   );
 }
