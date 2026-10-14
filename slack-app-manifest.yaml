@@ -1,0 +1,20 @@
+_metadata:
+  major_version: 1
+display_information:
+  name: KSC Disney Topping Update
+  description: Sends scheduled Disney kiosk topping check-ins and shares restock results.
+  background_color: "#FFA8BD"
+features:
+  bot_user:
+    display_name: KSC Topping Update
+    always_online: false
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - files:write
+      - chat:write.public
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

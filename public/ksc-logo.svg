@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 96" role="img" aria-labelledby="title desc">
+  <title id="title">KSC placeholder wordmark</title>
+  <desc id="desc">A playful pink KSC wordmark placeholder for Kawaii Slime Company.</desc>
+  <rect x="3" y="3" width="234" height="90" rx="31" fill="#FFF0F4" stroke="#FFA8BD" stroke-width="5"/>
+  <path d="M31 36c0-9 7-16 16-16 6 0 11 3 14 8 3-5 8-8 14-8 9 0 16 7 16 16 0 16-30 33-30 33S31 52 31 36Z" fill="#FFA8BD"/>
+  <text x="112" y="65" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800" letter-spacing="2" fill="#4B2A43">KSC</text>
+  <path d="M203 22l3.4 8.6L215 34l-8.6 3.4L203 46l-3.4-8.6L191 34l8.6-3.4L203 22Z" fill="#BFEDE2"/>
+  <circle cx="221" cy="68" r="4" fill="#D8C8F2"/>
+</svg>

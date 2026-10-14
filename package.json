@@ -1,0 +1,23 @@
+{
+  "name": "ksc-disney-topping-update",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "overrides": {
+    "postcss": "8.5.30"
+  },
+  "dependencies": {
+    "@upstash/redis": "1.39.0",
+    "@vercel/blob": "2.8.2",
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}
