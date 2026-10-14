@@ -31,7 +31,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Before testing APIs locally, create a Supabase project, run `supabase/schema.sql` in its SQL Editor, and fill `.env.local`. The home page at `/` is intentionally just a team-only message. A real form link is created by `/api/cron/send` after Supabase and Slack are configured.
+Before testing APIs locally, create a Supabase project, run `supabase/schema.sql` in its SQL Editor, and fill `.env.local`. The home page at `/` gives staff concise instructions to open the latest private Topping Update link in Slack. A real form link is created by `/api/cron/send` after Supabase and Slack are configured.
 
 Production build:
 
