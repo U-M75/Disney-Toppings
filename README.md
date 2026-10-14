@@ -69,7 +69,7 @@ Use your existing Slack app; this project does not require creating a new app or
 
 Invite the bot to the alert channel with `/invite @botname`, replacing `@botname` with its actual Slack name. Use the channel ID such as `C0123456789`, not `#channel-name`, for `SLACK_ALERT_CHANNEL_ID`. Optionally set `SLACK_RESULTS_CHANNEL_ID` to another channel ID; if it is empty, results stay in the alert thread. For the temporary test-mode flow below, point `SLACK_ALERT_CHANNEL_ID` at a dedicated testing channel.
 
-The Slack alert and result use ten `:pink:` emoji shortcodes as a divider. Slack will render them as pink artwork only if this workspace has a custom emoji named `pink`; otherwise Slack may display the shortcode text.
+The Slack alert and result use ten `:pinkline:` emoji shortcodes as a divider. Slack will render them as pink artwork only if this workspace has a custom emoji named `pinkline`; otherwise Slack may display the shortcode text.
 
 ## Environment variables
 
