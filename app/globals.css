@@ -439,8 +439,42 @@ h3 {
   object-fit: cover;
 }
 
+.style-inventory-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .style-status-field {
   margin-bottom: 0;
+}
+
+.bags-field {
+  max-width: 220px;
+  margin-top: 12px;
+}
+
+.replace-age-field {
+  margin-top: 12px;
+}
+
+.replace-age-field select {
+  max-width: 260px;
+}
+
+.style-card-replace {
+  border-color: var(--color-lilac-text);
+}
+
+.style-card-needed.style-card-replace {
+  box-shadow: 0 9px 28px rgba(117, 75, 134, 0.14);
+}
+
+.test-photo-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .needed-details {
@@ -1272,8 +1306,21 @@ h3 {
   font-size: 0.78rem;
 }
 
+.style-inventory-fields {
+  gap: 8px;
+}
+
 .bags-field {
   max-width: 190px;
+  margin-top: 9px;
+}
+
+.replace-age-field {
+  margin-top: 9px;
+}
+
+.replace-age-field select {
+  max-width: 100%;
 }
 
 .field-error,

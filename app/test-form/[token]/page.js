@@ -1,6 +1,6 @@
 import BrandedMessage from '../../../components/BrandedMessage';
 import ToppingForm from '../../../components/ToppingForm';
-import { getAppTimezone, getLocations, getShowBagsField, getStyles } from '../../../lib/config';
+import { getAppTimezone, getLocations, getStyles } from '../../../lib/config';
 import { verifySlackTestFormToken } from '../../../lib/test-mode';
 import { formatDateLabel } from '../../../lib/time';
 
@@ -34,7 +34,6 @@ export default function TemporaryTestFormPage({ params }) {
         locations={getLocations()}
         todayLabel={formatDateLabel(new Date(), timezone)}
         requirePhoto={false}
-        showBagsField={getShowBagsField()}
         existingSubmission={null}
         testMode
       />

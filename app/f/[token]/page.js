@@ -1,6 +1,6 @@
 import BrandedMessage from '../../../components/BrandedMessage';
 import ToppingForm from '../../../components/ToppingForm';
-import { getAppTimezone, getLocations, getRequirePhoto, getShowBagsField, getStyles } from '../../../lib/config';
+import { getAppTimezone, getLocations, getStyles } from '../../../lib/config';
 import { getSubmission, getSupabase } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { formatDateLabel, formatDateTime } from '../../../lib/time';
@@ -65,8 +65,7 @@ export default async function FormPage({ params }) {
         styles={styles}
         locations={locations}
         todayLabel={todayLabel}
-        requirePhoto={getRequirePhoto()}
-        showBagsField={getShowBagsField()}
+        requirePhoto
         existingSubmission={existingSubmission}
       />
     );

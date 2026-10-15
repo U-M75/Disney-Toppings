@@ -1,6 +1,6 @@
 # KSC Disney Topping Update
 
-A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk checks. It creates signed form links, records one of 28 style answers, receives photos directly into Vercel Blob, stores cycles/submissions in Supabase Postgres, and posts a Slack summary with native Slack photo files in the alert thread. **This version does not use Redis or Upstash.**
+A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk checks. It creates signed form links, collects Bin 1–14, Needed/Not Needed, required bags-remaining counts, and display-time replacement flags for each of 28 styles; it requires photos for Needed or Replace, stores photos in Vercel Blob and cycles/submissions in Supabase Postgres, and posts a full Slack inventory summary with native photo files in the alert thread. **This version does not use Redis or Upstash.**
 
 ## What is included
 
@@ -8,6 +8,7 @@ A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk 
 - Signed `cycleId.hmac` links with configurable expiry and timezone-aware dates.
 - Protected GET/POST alert and reminder cron routes. No Slack Workflow Builder, Events API, interactive endpoint, slash command, or signing secret is used.
 - Twenty-eight default placeholder labels, `Style 1` through `Style 28`, in `config/styles.js`; no real topping names are invented. `STYLES_JSON` may replace them only if the operator later chooses to.
+- A required Bin 1–14 selector (bins may be shared), Needed/Not Needed status, bags-remaining count, and explicit Yes/No replacement choice for display time on every style card. Photos are mandatory for any style marked Needed or Replace.
 - Vercel Blob photo uploads through a same-origin server route, JPEG compression (1600 px longest edge / quality 0.8), browser-side HEIC/HEIF-to-JPEG conversion when needed, a 4 MiB compressed request cap to stay below Vercel Function body limits, a 5 MB storage-side object ceiling, and a server-authorized cleanup endpoint for removed photos.
 - Supabase Postgres tables for cycles, submissions, photo ownership, and idempotency locks; application data is retained for 90 days and removed by the scheduled endpoints.
 - Slack Web API calls with 429/`Retry-After` handling, threaded/broadcast submission summaries, external native-file upload, and photo-link fallback.
@@ -89,8 +90,6 @@ The Slack alert and result use ten `:pinkline:` emoji shortcodes as a divider. S
 | `APP_TIMEZONE` | No | `America/Los_Angeles` | Defaults to `America/Los_Angeles`; use a valid IANA time zone. Keep this default for the Pacific schedules below. |
 | `LOCATIONS` | No | `Disney CA, Downtown Disney` | Comma-separated dropdown choices; defaults to `Disney CA`. |
 | `STYLES_JSON` | No | `[ {"id":"style-1","name":"Style 1"}, ... ]` | Valid JSON array with exactly 28 unique `{id,name,imageUrl?}` items. `imageUrl` must be HTTP(S). If absent, `config/styles.js` supplies the selected Style 1 … Style 28 placeholders. |
-| `REQUIRE_PHOTO` | No | `true` or `false` | Defaults to `true`. `false`, `0`, `no`, or `off` disables the required-photo check. |
-| `SHOW_BAGS_FIELD` | No | `true` or `false` | Defaults to `true`. Hides the optional bags field when false. |
 | `FORM_LINK_VALID_HOURS` | No | `72` | Defaults to 72; accepted range is 1–8760 hours. |
 | `ENABLE_SLACK_TEST_MODE` | No | `true` only while testing | Defaults to off. Enables a temporary no-database Slack/form test tool; remove the variable and redeploy when testing is complete. |
 
@@ -119,8 +118,8 @@ For an optional manual smoke test, `GET APP_BASE_URL/api/cron/send?force=1` with
 - `GET|POST /api/cron/reminder`: same authorization. Checks the latest cycle and posts one threaded reminder only if no submission exists.
 - `GET /f/[token]`: verifies the signed link and expiry on the server. Invalid, expired, missing, or unavailable links show a branded message with no stack trace. Form links are **not single-use**: after the first submit, they remain valid through the configured period (72 hours by default) and can be submitted again to update the saved response.
 - `POST /api/upload`: validates the signed form link, JPEG/PNG/WebP/HEIC content type, and per-object size; compressed form photos are sent through the same-origin route and stored in Vercel Blob. Only photo URLs registered in Supabase for that cycle are accepted at submit time.
-- `POST /api/upload/delete`: best-effort cleanup used when a worker removes a photo or changes a style to Not Needed.
-- `POST /api/submit`: validates name, location, exactly 28 unique answers, status values, needed-style photos, and bags values. Supabase persistence happens before Slack delivery, so a Slack failure does not discard the submission. A repeated submission replaces the current cycle's saved version and is labelled “Updated submission”.
+- `POST /api/upload/delete`: best-effort cleanup used when a worker removes a photo or changes a style so neither Needed nor Replace requires its photo.
+- `POST /api/submit`: validates name, location, exactly 28 unique answers, Bin 1–14 for every style, Needed/Not Needed status, required whole-number bag counts, replacement flags, and a photo for every style marked Needed or Replace. Supabase persistence happens before Slack delivery, so a Slack failure does not discard the submission. A repeated submission replaces the current cycle's saved version and is labelled “Updated submission”.
 - `GET /api/health`: booleans only for configured environment-variable names plus Supabase reachability; it never returns secret values.
 - `POST /api/test/start` and `POST /api/test/submit`: only active when `ENABLE_SLACK_TEST_MODE=true`; provide a temporary form and Slack thread test without database writes. The test console is at `/test-console` and uses the `CRON_SECRET` authorization flow.
 
@@ -143,12 +142,12 @@ Locations are a comma-separated list such as `Disney CA, Downtown Disney`. The f
 ## Smoke-test plan
 
 1. Open `/api/health`. Confirm `supabaseReachable: true` and expected environment-variable booleans. This endpoint never returns secret values.
-2. Open the form link on an iPhone or Android phone. Check the logo, placeholder labels `Style 1` through `Style 28`, mobile layout, date, and location. Mark a style Needed, take/select a photo, wait for the upload bar/preview, and mark every other style.
-3. Submit. Confirm the success counts and Needed list. In Slack, confirm the summary is a broadcast thread reply and the photo appears as a native Slack file in that thread. If Slack file upload is blocked, the thread should contain the photo-link fallback and the saved submission should remain intact.
+2. Open the form link on an iPhone or Android phone. Check the logo, placeholder labels `Style 1` through `Style 28`, mobile layout, date, and location. For all 28 styles, choose a bin (sharing is allowed), status, whole-number bags count, and an explicit Yes/No replacement answer; upload photos for every Needed or Replace=Yes style.
+3. Submit. Confirm the Needed and Replace counts/lists include bins and bags. In Slack, confirm the broadcast thread reply contains the complete 28-row inventory (bin, style, status, bags, replacement flag) and the photos for Needed/Replace styles appear as native Slack files. If Slack file upload is blocked, the thread should contain photo-link fallbacks and the saved submission should remain intact.
 4. Reopen the same submitted link while it is still valid. Confirm the “Already submitted by …” notice. Submit a changed answer again; Slack should label it “Updated submission” and Supabase should contain the latest version. The link remains usable for its configured period (default 72 hours).
-5. If temporary test mode is enabled, visit `/test-console`, enter `CRON_SECRET` directly into the page, start a test, and verify the Slack reply is clearly labeled and the response is not saved. Turn test mode off again when finished.
+5. If temporary test mode is enabled, visit `/test-console`, enter `CRON_SECRET` directly into the page, start a test, and verify the Slack reply is clearly labeled, includes bins/bag counts/replacement flags, and the response is not saved. Photos remain disabled in test mode. Turn test mode off again when finished.
 6. Existing cron-job.org jobs are already configured and enabled; do not recreate them for this update. If needed, use the existing authenticated `/api/cron/reminder` test procedure, or test alert sending in a non-production environment to avoid an unnecessary production Slack post.
-7. Test link expiry using a short `FORM_LINK_VALID_HOURS` in a non-production environment, then confirm the branded expired-link message. Do not shorten the production setting just for this test. Optional checks: set `SLACK_ALERT_MENTION` empty, `REQUIRE_PHOTO=false`, or `SHOW_BAGS_FIELD=false` in a Preview deployment and verify the corresponding behavior.
+7. Test link expiry using a short `FORM_LINK_VALID_HOURS` in a non-production environment, then confirm the branded expired-link message. Do not shorten the production setting just for this test. Optional check: set `SLACK_ALERT_MENTION` empty in a Preview deployment and verify mentions are disabled. Photo requirements and bags fields are mandatory and are not configurable off.
 
 
 ## Temporary Slack/form test without Supabase
@@ -158,7 +157,7 @@ The temporary test mode checks the form UI and Slack alert/reply without Supabas
 1. Confirm `SLACK_ALERT_CHANNEL_ID` points to an appropriate channel for a clearly labeled test alert, and that the existing bot is invited there. The test tool posts to the configured channel.
 2. In Vercel Environment Variables, set `ENABLE_SLACK_TEST_MODE=true` and redeploy.
 3. Open `https://YOUR-PRODUCTION-DOMAIN/test-console`. Enter `CRON_SECRET` directly into the page over HTTPS (do not paste it into Slack or chat) and choose **Send test alert to Slack**.
-4. Open the clearly labeled test alert in Slack, then use its button to fill all 28 placeholder styles. Photos are disabled. Submit; the result appears as a clearly labeled reply in the same Slack thread but is not saved.
+4. Open the clearly labeled test alert in Slack, then use its button to fill all 28 placeholder styles with a bin, status, bags-remaining count, and replacement flag. Photos are disabled. Submit; the full inventory result appears as a clearly labeled reply in the same Slack thread but is not saved.
 5. When finished, remove or set `ENABLE_SLACK_TEST_MODE=false` and redeploy. The test console and test links will then be disabled.
 
 The test trigger uses the `CRON_SECRET` authorization header. Test links are HMAC-signed with `FORM_SECRET`, restricted to the configured alert channel, and expire after 30 minutes. Do not leave test mode enabled longer than needed.

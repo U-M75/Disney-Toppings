@@ -11,9 +11,10 @@ export default function TeamLanding() {
           <ol className="landing-steps">
             <li>Open the latest <strong>Topping Update</strong> message in your Disney team Slack channel.</li>
             <li>Select <strong>Open update form</strong> in that message.</li>
-            <li>Mark all 28 styles as <strong>Needed</strong> or <strong>Not Needed</strong>, then submit.</li>
+            <li>For every style, choose Bin 1–14, Needed/Not Needed, and bags remaining.</li>
+            <li>Check Replace when the style has been displayed too long, then submit.</li>
           </ol>
-          <p className="landing-photo-note">Add a photo for each style marked Needed.</p>
+          <p className="landing-photo-note">Add a photo for every style marked Needed or Replace.</p>
         </div>
         <p className="landing-note">Need a fresh link? Ask your manager to send or resend the latest Slack update.</p>
       </section>

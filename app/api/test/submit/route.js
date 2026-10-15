@@ -1,4 +1,4 @@
-import { getAppTimezone, getLocations, getShowBagsField, getStyles } from '../../../../lib/config';
+import { getAppTimezone, getLocations, getStyles } from '../../../../lib/config';
 import { cleanPersonName } from '../../../../lib/validation';
 import { verifySlackTestFormToken, isSlackTestModeEnabled } from '../../../../lib/test-mode';
 import { formatDateTime } from '../../../../lib/time';
@@ -40,12 +40,10 @@ export async function POST(request) {
   let styles;
   let locations;
   let timezone;
-  let showBagsField;
   try {
     styles = getStyles();
     locations = getLocations();
     timezone = getAppTimezone();
-    showBagsField = getShowBagsField();
   } catch {
     return json({ ok: false, error: 'The test form settings are not available. Please try again later.' }, 500);
   }
@@ -94,22 +92,26 @@ export async function POST(request) {
     }
     if (answer.photoUrl) fieldErrors[style.id] = 'Photo uploads are disabled in this temporary test.';
 
-    let bags;
-    if (answer.bags !== undefined && answer.bags !== null && answer.bags !== '') {
-      if (!showBagsField || answer.status !== 'needed') {
-        fieldErrors[style.id] = 'Bags can only be entered for a needed style in this test.';
-      } else if (typeof answer.bags !== 'number' || !Number.isInteger(answer.bags) || answer.bags < 0 || answer.bags > 9999) {
-        fieldErrors[style.id] = 'Bags remaining must be a whole number from 0 to 9999.';
-      } else {
-        bags = answer.bags;
-      }
+    const bin = answer.bin;
+    if (typeof bin !== 'number' || !Number.isInteger(bin) || bin < 1 || bin > 14) {
+      fieldErrors[style.id] = 'Choose a bin from 1 to 14.';
+    }
+    if (typeof answer.replaceForAge !== 'boolean') {
+      fieldErrors[style.id] = 'Choose Yes or No for replacement due to display time.';
+    }
+    const replaceForAge = answer.replaceForAge === true;
+    const bags = answer.bags;
+    if (typeof bags !== 'number' || !Number.isInteger(bags) || bags < 0 || bags > 9999) {
+      fieldErrors[style.id] = 'Enter bags remaining as a whole number from 0 to 9999.';
     }
 
     normalizedAnswers.push({
       styleId: style.id,
       styleName: style.name,
+      bin,
       status: answer.status,
-      ...(bags !== undefined ? { bags } : {})
+      replaceForAge,
+      bags
     });
   }
 
@@ -117,6 +119,7 @@ export async function POST(request) {
 
   const submittedAt = new Date().toISOString();
   const neededCount = normalizedAnswers.filter((answer) => answer.status === 'needed').length;
+  const replaceCount = normalizedAnswers.filter((answer) => answer.replaceForAge).length;
   const submission = {
     cycleId: resolved.cycle.cycleId,
     name,
@@ -126,7 +129,8 @@ export async function POST(request) {
     timeZone: timezone,
     isUpdated: false,
     neededCount,
-    notNeededCount: normalizedAnswers.length - neededCount
+    replaceCount,
+    notNeededCount: normalizedAnswers.filter((answer) => answer.status === 'not_needed').length
   };
 
   try {
@@ -142,13 +146,23 @@ export async function POST(request) {
     updated: false,
     summary: {
       neededCount,
-      notNeededCount: normalizedAnswers.length - neededCount,
+      replaceCount,
+      notNeededCount: normalizedAnswers.filter((answer) => answer.status === 'not_needed').length,
       neededStyles: normalizedAnswers
         .filter((answer) => answer.status === 'needed')
         .map((answer) => ({
           styleId: answer.styleId,
           name: answer.styleName,
-          ...(answer.bags !== undefined ? { bags: answer.bags } : {})
+          bin: answer.bin,
+          bags: answer.bags
+        })),
+      replaceStyles: normalizedAnswers
+        .filter((answer) => answer.replaceForAge)
+        .map((answer) => ({
+          styleId: answer.styleId,
+          name: answer.styleName,
+          bin: answer.bin,
+          bags: answer.bags
         })),
       submittedAtLabel: formatDateTime(new Date(submittedAt), timezone)
     },

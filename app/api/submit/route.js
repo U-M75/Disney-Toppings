@@ -1,4 +1,4 @@
-import { getAppTimezone, getLocations, getRequirePhoto, getStyles } from '../../../lib/config';
+import { getAppTimezone, getLocations, getStyles } from '../../../lib/config';
 import { acquireLock, getCycle, getSubmission, getAllowedBlob, getSupabase, releaseLock, saveCycle, saveSubmission } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { cleanPersonName, isSafeVercelBlobUrl } from '../../../lib/validation';
@@ -46,12 +46,10 @@ export async function POST(request) {
 
   let styles;
   let locations;
-  let requirePhoto;
   let timezone;
   try {
     styles = getStyles();
     locations = getLocations();
-    requirePhoto = getRequirePhoto();
     timezone = getAppTimezone();
   } catch (error) {
     return json({ ok: false, error: error instanceof Error ? error.message : 'The form configuration is invalid.' }, 500);
@@ -101,29 +99,36 @@ export async function POST(request) {
       continue;
     }
 
+    const bin = answer.bin;
+    if (typeof bin !== 'number' || !Number.isInteger(bin) || bin < 1 || bin > 14) {
+      fieldErrors[style.id] = 'Choose a bin from 1 to 14.';
+    }
+    if (typeof answer.replaceForAge !== 'boolean') {
+      fieldErrors[style.id] = 'Choose Yes or No for replacement due to display time.';
+    }
+    const replaceForAge = answer.replaceForAge === true;
     const photoUrl = typeof answer.photoUrl === 'string' && answer.photoUrl.trim() ? answer.photoUrl.trim() : undefined;
-    if (answer.status === 'needed') {
-      if (requirePhoto && !photoUrl) fieldErrors[style.id] = 'Add a photo for this needed style.';
+    const needsPhoto = answer.status === 'needed' || replaceForAge;
+    if (needsPhoto) {
+      if (!photoUrl) fieldErrors[style.id] = 'Add a photo for a style marked Needed or Replace.';
       if (photoUrl && !isSafeVercelBlobUrl(photoUrl)) fieldErrors[style.id] = 'Upload the photo using this form before submitting.';
     } else if (photoUrl) {
-      fieldErrors[style.id] = 'Remove the photo or choose Needed for this style.';
+      fieldErrors[style.id] = 'Remove the photo or mark the style Needed/Replace.';
     }
 
-    let bags;
-    if (answer.bags !== undefined && answer.bags !== null && answer.bags !== '') {
-      if (typeof answer.bags !== 'number' || !Number.isInteger(answer.bags) || answer.bags < 0 || answer.bags > 9999) {
-        fieldErrors[style.id] = 'Bags remaining must be a whole number from 0 to 9999.';
-      } else {
-        bags = answer.bags;
-      }
+    const bags = answer.bags;
+    if (typeof bags !== 'number' || !Number.isInteger(bags) || bags < 0 || bags > 9999) {
+      fieldErrors[style.id] = 'Enter bags remaining as a whole number from 0 to 9999.';
     }
 
     normalizedAnswers.push({
       styleId: style.id,
       styleName: style.name,
+      bin,
       status: answer.status,
+      replaceForAge,
       ...(photoUrl ? { photoUrl } : {}),
-      ...(bags !== undefined ? { bags } : {})
+      bags
     });
   }
 
@@ -154,6 +159,7 @@ export async function POST(request) {
     const previousSubmission = await getSubmission(supabase, resolved.cycleId);
     const submittedAt = new Date().toISOString();
     const neededCount = normalizedAnswers.filter((answer) => answer.status === 'needed').length;
+    const replaceCount = normalizedAnswers.filter((answer) => answer.replaceForAge).length;
     const submission = {
       cycleId: resolved.cycleId,
       name,
@@ -163,7 +169,8 @@ export async function POST(request) {
       timeZone: timezone,
       isUpdated: Boolean(previousSubmission),
       neededCount,
-      notNeededCount: normalizedAnswers.length - neededCount
+      replaceCount,
+      notNeededCount: normalizedAnswers.filter((answer) => answer.status === 'not_needed').length
     };
 
     try {
@@ -224,11 +231,19 @@ export async function POST(request) {
       updated: submission.isUpdated,
       summary: {
         neededCount,
-        notNeededCount: normalizedAnswers.length - neededCount,
+        replaceCount,
+        notNeededCount: normalizedAnswers.filter((answer) => answer.status === 'not_needed').length,
         neededStyles: normalizedAnswers.filter((answer) => answer.status === 'needed').map((answer) => ({
           styleId: answer.styleId,
           name: answer.styleName,
-          ...(answer.bags !== undefined ? { bags: answer.bags } : {})
+          bin: answer.bin,
+          bags: answer.bags
+        })),
+        replaceStyles: normalizedAnswers.filter((answer) => answer.replaceForAge).map((answer) => ({
+          styleId: answer.styleId,
+          name: answer.styleName,
+          bin: answer.bin,
+          bags: answer.bags
         })),
         submittedAtLabel: formatDateTime(new Date(submittedAt), timezone)
       },

@@ -179,7 +179,7 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
         </div>
       )}
 
-      <p className="photo-help">{required ? 'A photo is required for a needed style.' : 'A photo is optional for this style.'} Images are compressed before upload.</p>
+      <p className="photo-help">{required ? 'A photo is required for a style marked Needed or Replace.' : 'A photo is optional for this style.'} Images are compressed before upload.</p>
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   );

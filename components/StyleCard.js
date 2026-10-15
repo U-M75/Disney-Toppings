@@ -2,23 +2,31 @@
 
 import PhotoUploader from './PhotoUploader';
 
+const BIN_NUMBERS = Array.from({ length: 14 }, (_, index) => index + 1);
+
 export default function StyleCard({
   style,
   answer,
   error,
   token,
   requirePhoto,
-  showBagsField,
   testMode = false,
+  onBinChange,
   onStatusChange,
+  onReplaceForAgeChange,
   onPhotoChange,
   onBagsChange,
   onUploadingChange
 }) {
+  const binId = `bin-${style.id}`;
   const selectId = `status-${style.id}`;
+  const replaceId = `replace-${style.id}`;
+  const bagsId = `bags-${style.id}`;
   const errorId = `error-${style.id}`;
+  const needsAction = answer.status === 'needed' || Boolean(answer.replaceForAge);
+
   return (
-    <article className={`style-card ${answer.status === 'needed' ? 'style-card-needed' : ''}`} data-style-id={style.id}>
+    <article className={`style-card ${answer.status === 'needed' ? 'style-card-needed' : ''} ${answer.replaceForAge ? 'style-card-replace' : ''}`} data-style-id={style.id}>
       <div className="style-card-heading">
         <div className="style-card-title-wrap">
           <span className="style-number" aria-hidden="true">✦</span>
@@ -27,28 +35,82 @@ export default function StyleCard({
         {style.imageUrl && <img className="style-reference-image" src={style.imageUrl} alt={`${style.name} reference`} loading="lazy" />}
       </div>
 
-      <div className="field style-status-field">
-        <label htmlFor={selectId}>Status <span className="required-word">(required)</span></label>
+      <div className="style-inventory-fields">
+        <div className="field">
+          <label htmlFor={binId}>Bin <span className="required-word">(required)</span></label>
+          <select
+            className="form-control"
+            id={binId}
+            required
+            value={answer.bin || ''}
+            aria-invalid={!answer.bin && Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => onBinChange(style.id, event.target.value)}
+          >
+            <option value="">Select bin…</option>
+            {BIN_NUMBERS.map((number) => <option key={number} value={String(number)}>Bin {number}</option>)}
+          </select>
+        </div>
+
+        <div className="field style-status-field">
+          <label htmlFor={selectId}>Status <span className="required-word">(required)</span></label>
+          <select
+            className="form-control"
+            id={selectId}
+            required
+            value={answer.status}
+            aria-invalid={!answer.status && Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => onStatusChange(style.id, event.target.value)}
+          >
+            <option value="">Select…</option>
+            <option value="needed">Needed</option>
+            <option value="not_needed">Not Needed</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="field bags-field">
+        <label htmlFor={bagsId}>Bags remaining <span className="required-word">(required)</span></label>
+        <input
+          className="form-control"
+          id={bagsId}
+          type="number"
+          inputMode="numeric"
+          min="0"
+          max="9999"
+          step="1"
+          required
+          value={answer.bags ?? ''}
+          onChange={(event) => onBagsChange(style.id, event.target.value)}
+          placeholder="Enter bag count"
+          aria-invalid={Boolean(error) && (answer.bags === '' || answer.bags === null || answer.bags === undefined)}
+          aria-describedby={error ? errorId : undefined}
+        />
+      </div>
+
+      <div className="field replace-age-field">
+        <label htmlFor={replaceId}>Replace because it has been displayed too long <span className="required-word">(required)</span></label>
         <select
           className="form-control"
-          id={selectId}
+          id={replaceId}
           required
-          value={answer.status}
-          aria-invalid={!answer.status && Boolean(error)}
+          value={typeof answer.replaceForAge === 'boolean' ? (answer.replaceForAge ? 'yes' : 'no') : ''}
+          aria-invalid={typeof answer.replaceForAge !== 'boolean' && Boolean(error)}
           aria-describedby={error ? errorId : undefined}
-          onChange={(event) => onStatusChange(style.id, event.target.value)}
+          onChange={(event) => onReplaceForAgeChange(style.id, event.target.value === 'yes')}
         >
-          <option value="">Select…</option>
-          <option value="not_needed">Not Needed</option>
-          <option value="needed">Needed</option>
+          <option value="">Choose Yes or No…</option>
+          <option value="yes">Yes — replace</option>
+          <option value="no">No — keep</option>
         </select>
       </div>
 
-      {answer.status === 'needed' && (
+      {needsAction && (
         <div className="needed-details">
           <div className="needed-details-heading">
             <span aria-hidden="true">💖</span>
-            <strong>Restock this style</strong>
+            <strong>{answer.status === 'needed' && answer.replaceForAge ? 'Restock and replace this style' : answer.status === 'needed' ? 'Restock this style' : 'Replace this style'}</strong>
           </div>
           {testMode ? (
             <div className="field">
@@ -66,23 +128,6 @@ export default function StyleCard({
                 required={requirePhoto}
                 onChange={(url) => onPhotoChange(style.id, url)}
                 onUploadingChange={onUploadingChange}
-              />
-            </div>
-          )}
-          {showBagsField && (
-            <div className="field bags-field">
-              <label htmlFor={`bags-${style.id}`}>Bags remaining <span className="optional-word">(optional)</span></label>
-              <input
-                className="form-control"
-                id={`bags-${style.id}`}
-                type="number"
-                inputMode="numeric"
-                min="0"
-                max="9999"
-                step="1"
-                value={answer.bags || ''}
-                onChange={(event) => onBagsChange(style.id, event.target.value)}
-                placeholder="e.g. 2"
               />
             </div>
           )}

@@ -5,7 +5,27 @@ import StyleCard from './StyleCard';
 import ProgressBar from './ProgressBar';
 
 function emptyAnswers(styles) {
-  return Object.fromEntries(styles.map((style) => [style.id, { status: '', photoUrl: '', bags: '' }]));
+  return Object.fromEntries(styles.map((style) => [style.id, {
+    bin: '',
+    status: '',
+    replaceForAge: null,
+    photoUrl: '',
+    bags: ''
+  }]));
+}
+
+function isValidBagCount(value) {
+  if (value === '' || value === null || value === undefined) return false;
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 0 && count <= 9999;
+}
+
+function isCompleteAnswer(answer, requirePhoto) {
+  const bin = Number(answer?.bin);
+  const validBin = Number.isInteger(bin) && bin >= 1 && bin <= 14;
+  const needsPhoto = answer?.status === 'needed' || Boolean(answer?.replaceForAge);
+  const photoComplete = !requirePhoto || !needsPhoto || Boolean(answer?.photoUrl);
+  return Boolean(answer?.status && typeof answer?.replaceForAge === 'boolean' && validBin && isValidBagCount(answer?.bags) && photoComplete);
 }
 
 function deletePhotoBestEffort(token, url) {
@@ -25,7 +45,6 @@ export default function ToppingForm({
   locations,
   todayLabel,
   requirePhoto,
-  showBagsField,
   existingSubmission,
   testMode = false
 }) {
@@ -55,7 +74,9 @@ export default function ToppingForm({
           const savedAnswer = draft?.answers?.[style.id];
           if (savedAnswer && ['', 'needed', 'not_needed'].includes(savedAnswer.status)) {
             answers[style.id] = {
+              bin: typeof savedAnswer.bin === 'string' || typeof savedAnswer.bin === 'number' ? String(savedAnswer.bin) : '',
               status: savedAnswer.status,
+              replaceForAge: typeof savedAnswer.replaceForAge === 'boolean' ? savedAnswer.replaceForAge : null,
               photoUrl: typeof savedAnswer.photoUrl === 'string' ? savedAnswer.photoUrl : '',
               bags: typeof savedAnswer.bags === 'string' || typeof savedAnswer.bags === 'number' ? String(savedAnswer.bags) : ''
             };
@@ -94,8 +115,9 @@ export default function ToppingForm({
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
   }, [dirty, success, isSubmitting]);
 
-  const answeredCount = styles.reduce((count, style) => count + (form.answers[style.id]?.status ? 1 : 0), 0);
+  const answeredCount = styles.reduce((count, style) => count + (isCompleteAnswer(form.answers[style.id], requirePhoto) ? 1 : 0), 0);
   const neededCount = styles.reduce((count, style) => count + (form.answers[style.id]?.status === 'needed' ? 1 : 0), 0);
+  const replaceCount = styles.reduce((count, style) => count + (form.answers[style.id]?.replaceForAge ? 1 : 0), 0);
   const isUploading = Object.values(uploading).some(Boolean);
 
   function updateForm(patcher) {
@@ -103,9 +125,27 @@ export default function ToppingForm({
     setDirty(true);
   }
 
+  function clearStyleError(styleId) {
+    setErrors((current) => {
+      const next = { ...current, [styleId]: undefined };
+      delete next.answers;
+      return next;
+    });
+    setSubmitError('');
+  }
+
+  function onBinChange(styleId, bin) {
+    updateForm((current) => ({
+      ...current,
+      answers: { ...current.answers, [styleId]: { ...current.answers[styleId], bin } }
+    }));
+    clearStyleError(styleId);
+  }
+
   function onStatusChange(styleId, status) {
     const previous = form.answers[styleId];
-    if (status === 'not_needed' && previous?.photoUrl) deletePhotoBestEffort(token, previous.photoUrl);
+    const keepPhoto = status === 'needed' || Boolean(previous?.replaceForAge);
+    if (!keepPhoto && previous?.photoUrl) deletePhotoBestEffort(token, previous.photoUrl);
     updateForm((current) => ({
       ...current,
       answers: {
@@ -113,16 +153,29 @@ export default function ToppingForm({
         [styleId]: {
           ...current.answers[styleId],
           status,
-          ...(status === 'not_needed' ? { photoUrl: '', bags: '' } : {})
+          ...(!keepPhoto ? { photoUrl: '' } : {})
         }
       }
     }));
-    setErrors((current) => {
-      const next = { ...current, [styleId]: undefined };
-      delete next.answers;
-      return next;
-    });
-    setSubmitError('');
+    clearStyleError(styleId);
+  }
+
+  function onReplaceForAgeChange(styleId, replaceForAge) {
+    const previous = form.answers[styleId];
+    const keepPhoto = replaceForAge || previous?.status === 'needed';
+    if (!keepPhoto && previous?.photoUrl) deletePhotoBestEffort(token, previous.photoUrl);
+    updateForm((current) => ({
+      ...current,
+      answers: {
+        ...current.answers,
+        [styleId]: {
+          ...current.answers[styleId],
+          replaceForAge,
+          ...(!keepPhoto ? { photoUrl: '' } : {})
+        }
+      }
+    }));
+    clearStyleError(styleId);
   }
 
   function onPhotoChange(styleId, photoUrl) {
@@ -149,11 +202,20 @@ export default function ToppingForm({
   function setUnansweredToNotNeeded() {
     const unanswered = styles.filter((style) => !form.answers[style.id]?.status);
     if (!unanswered.length) return;
-    const confirmed = window.confirm(`Set all ${unanswered.length} unanswered styles to Not Needed?`);
+    const confirmed = window.confirm(`Set the status of all ${unanswered.length} unanswered styles to Not Needed? You must still choose each bin, enter bags remaining, and answer Replace Yes/No.`);
     if (!confirmed) return;
     updateForm((current) => {
       const answers = { ...current.answers };
-      for (const style of unanswered) answers[style.id] = { ...answers[style.id], status: 'not_needed', photoUrl: '', bags: '' };
+      for (const style of unanswered) {
+        const answer = answers[style.id];
+        const keepPhoto = Boolean(answer.replaceForAge);
+        if (!keepPhoto && answer.photoUrl) deletePhotoBestEffort(token, answer.photoUrl);
+        answers[style.id] = {
+          ...answer,
+          status: 'not_needed',
+          ...(!keepPhoto ? { photoUrl: '' } : {})
+        };
+      }
       return { ...current, answers };
     });
     setErrors((current) => {
@@ -191,10 +253,19 @@ export default function ToppingForm({
     else if (name.length > 80) fieldErrors.name = 'Use 80 characters or fewer for your name.';
     if (!locations.includes(form.location)) fieldErrors.location = 'Choose one of the listed locations.';
 
+    const addStyleError = (styleId, message) => {
+      if (!fieldErrors[styleId]) fieldErrors[styleId] = message;
+    };
     for (const style of styles) {
-      const answer = form.answers[style.id] || { status: '', photoUrl: '' };
-      if (!answer.status) fieldErrors[style.id] = 'Choose Needed or Not Needed.';
-      else if (answer.status === 'needed' && requirePhoto && !answer.photoUrl) fieldErrors[style.id] = 'Add a photo for this needed style.';
+      const answer = form.answers[style.id] || { bin: '', status: '', replaceForAge: null, photoUrl: '', bags: '' };
+      const bin = Number(answer.bin);
+      if (!Number.isInteger(bin) || bin < 1 || bin > 14) addStyleError(style.id, 'Choose a bin from 1 to 14.');
+      if (!answer.status) addStyleError(style.id, 'Choose Needed or Not Needed.');
+      if (typeof answer.replaceForAge !== 'boolean') addStyleError(style.id, 'Choose Yes or No for replacement due to display time.');
+      if (!isValidBagCount(answer.bags)) addStyleError(style.id, 'Enter bags remaining as a whole number from 0 to 9999.');
+      const needsPhoto = answer.status === 'needed' || Boolean(answer.replaceForAge);
+      if (needsPhoto && requirePhoto && !answer.photoUrl) addStyleError(style.id, 'Add a photo for a style marked Needed or Replace.');
+      if (!needsPhoto && answer.photoUrl) addStyleError(style.id, 'Remove the photo or mark the style Needed/Replace.');
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -209,11 +280,14 @@ export default function ToppingForm({
     setIsSubmitting(true);
     const answers = styles.map((style) => {
       const answer = form.answers[style.id];
+      const needsPhoto = answer.status === 'needed' || Boolean(answer.replaceForAge);
       return {
         styleId: style.id,
+        bin: Number(answer.bin),
         status: answer.status,
-        ...(answer.status === 'needed' && answer.photoUrl ? { photoUrl: answer.photoUrl } : {}),
-        ...(answer.status === 'needed' && showBagsField && answer.bags !== '' ? { bags: Number(answer.bags) } : {})
+        replaceForAge: Boolean(answer.replaceForAge),
+        bags: Number(answer.bags),
+        ...(needsPhoto && answer.photoUrl ? { photoUrl: answer.photoUrl } : {})
       };
     });
 
@@ -248,6 +322,7 @@ export default function ToppingForm({
   if (success) {
     const summary = success.summary || {};
     const neededStyles = summary.neededStyles || [];
+    const replaceStyles = summary.replaceStyles || [];
     const slack = success.slack || {};
     return (
       <main className="form-shell">
@@ -264,6 +339,7 @@ export default function ToppingForm({
             : `Thanks, ${form.name.trim() || 'team member'}! Your kiosk update has been saved.`}</p>
           <div className="summary-pills">
             <span className="summary-pill needed-pill">🔴 {summary.neededCount || 0} Needed</span>
+            <span className="summary-pill">♻️ {summary.replaceCount || 0} Replace</span>
             <span className="summary-pill">✅ {summary.notNeededCount || 0} Not Needed</span>
           </div>
           <div className="success-list-wrap">
@@ -271,10 +347,20 @@ export default function ToppingForm({
             {neededStyles.length ? (
               <ul className="success-list">
                 {neededStyles.map((style) => (
-                  <li key={style.styleId}>{style.name}{style.bags !== undefined ? ` · ${style.bags} bags remaining` : ''}</li>
+                  <li key={style.styleId}>Bin {style.bin} · {style.name} · {style.bags} bags remaining</li>
                 ))}
               </ul>
-            ) : <p className="nothing-needed">✅ Nothing needs restocking this round.</p>}
+            ) : <p className="nothing-needed">No styles were marked Needed.</p>}
+          </div>
+          <div className="success-list-wrap">
+            <h2>Replace due to display time</h2>
+            {replaceStyles.length ? (
+              <ul className="success-list">
+                {replaceStyles.map((style) => (
+                  <li key={style.styleId}>Bin {style.bin} · {style.name} · {style.bags} bags remaining</li>
+                ))}
+              </ul>
+            ) : <p className="nothing-needed">No styles were marked for replacement.</p>}
           </div>
           <p className="submitted-at">Submitted {summary.submittedAtLabel ? `at ${summary.submittedAtLabel}` : 'successfully'}.</p>
           {slack.status === 'failed' && <p className="delivery-warning" role="alert">{slack.error || 'Saved successfully, but Slack could not be notified. Please tell your manager.'}</p>}
@@ -381,26 +467,27 @@ export default function ToppingForm({
             <div>
               <p className="eyebrow">Topping inventory</p>
               <h2 id="styles-title">Check each style</h2>
-              <p className="section-help">{testMode ? 'Choose Needed or Not Needed for all 28 styles. Photos are disabled in this test.' : 'Choose Needed or Not Needed for all 28 styles. Add a photo for every style marked Needed.'}</p>
+              <p className="section-help">{testMode ? 'For every style, choose Bin 1–14, status, bags remaining, and whether it should be replaced due to display time. Photos are disabled in this test.' : 'For every style, choose Bin 1–14 and Needed/Not Needed, enter bags remaining, and mark Replace if it has been displayed too long. Add a photo for every style marked Needed or Replace.'}</p>
             </div>
             <span className="section-heart" aria-hidden="true">✧</span>
           </div>
           {errors.answers && <p className="field-error form-level-error" role="alert">{errors.answers}</p>}
           <button className="button button-outline bulk-button" type="button" onClick={setUnansweredToNotNeeded}>
-            Set all unanswered to Not Needed
+            Set unanswered statuses to Not Needed
           </button>
           <div className="style-grid">
             {styles.map((style) => (
               <StyleCard
                 key={style.id}
                 style={style}
-                answer={form.answers[style.id] || { status: '', photoUrl: '', bags: '' }}
+                answer={form.answers[style.id] || { bin: '', status: '', replaceForAge: null, photoUrl: '', bags: '' }}
                 error={errors[style.id] || ''}
                 token={token}
                 requirePhoto={requirePhoto}
-                showBagsField={showBagsField}
                 testMode={testMode}
+                onBinChange={onBinChange}
                 onStatusChange={onStatusChange}
+                onReplaceForAgeChange={onReplaceForAgeChange}
                 onPhotoChange={onPhotoChange}
                 onBagsChange={onBagsChange}
                 onUploadingChange={onUploadingChange}
@@ -414,10 +501,10 @@ export default function ToppingForm({
           <div className="sticky-submit-inner">
             <div className="sticky-progress-copy">
               <div className="progress-copy-row">
-                <span className="progress-summary" aria-live="polite" aria-atomic="true">{answeredCount} / {styles.length} answered · {neededCount} needed</span>
+                <span className="progress-summary" aria-live="polite" aria-atomic="true">{answeredCount} / {styles.length} complete · {neededCount} needed · {replaceCount} replace</span>
                 {isUploading && <span className="uploading-label" aria-live="polite">Photo uploading…</span>}
               </div>
-              <ProgressBar value={answeredCount} max={styles.length} label="Styles answered" />
+              <ProgressBar value={answeredCount} max={styles.length} label="Styles complete" />
             </div>
             <div className="submit-action-wrap">
               <button className="button button-primary submit-button" type="submit" disabled={isSubmitting || isUploading}>
