@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { upload } from '@vercel/blob/client';
 import { compressImageFile } from '../lib/image-compression';
 import ProgressBar from './ProgressBar';
 
@@ -19,8 +18,38 @@ async function deleteUploadedPhoto(token, url) {
   }
 }
 
-function safeFilePart(value) {
-  return String(value || 'style').replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 60) || 'style';
+function uploadThroughApp(file, token, styleId, onProgress) {
+  return new Promise((resolve, reject) => {
+    const body = new FormData();
+    body.append('clientPayload', token);
+    body.append('styleId', styleId);
+    body.append('file', file, file.name || 'topping-photo.jpg');
+
+    const request = new XMLHttpRequest();
+    request.open('POST', '/api/upload');
+    request.timeout = 120000;
+    request.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        onProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
+      }
+    });
+    request.addEventListener('load', () => {
+      let data = {};
+      try {
+        data = JSON.parse(request.responseText || '{}');
+      } catch {
+        // A non-JSON response is reported with a safe generic message below.
+      }
+      if (request.status >= 200 && request.status < 300 && typeof data.url === 'string') {
+        resolve(data);
+      } else {
+        reject(new Error(data.error || 'The photo could not be uploaded. Please try again.'));
+      }
+    });
+    request.addEventListener('error', () => reject(new Error('The connection interrupted the photo upload. Check the connection and try again.')));
+    request.addEventListener('timeout', () => reject(new Error('The photo upload took too long. Please try again.')));
+    request.send(body);
+  });
 }
 
 export default function PhotoUploader({ token, styleId, styleName, photoUrl, onChange, onUploadingChange, required }) {
@@ -59,15 +88,8 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
       setIsPreparing(false);
       setIsUploading(true);
       uploadingCallback.current?.(styleId, true);
-      const extension = compressedFile.type === 'image/heic' ? 'heic' : 'jpg';
-      const result = await upload(`topping-${safeFilePart(styleId)}-${Date.now()}.${extension}`, compressedFile, {
-        access: 'public',
-        contentType: compressedFile.type,
-        handleUploadUrl: '/api/upload',
-        clientPayload: token,
-        onUploadProgress: (eventProgress) => {
-          if (alive.current) setProgress(Math.round(eventProgress.percentage || 0));
-        }
+      const result = await uploadThroughApp(compressedFile, token, styleId, (percentage) => {
+        if (alive.current) setProgress(percentage);
       });
 
       if (!alive.current) {

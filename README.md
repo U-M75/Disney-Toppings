@@ -8,7 +8,7 @@ A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk 
 - Signed `cycleId.hmac` links with configurable expiry and timezone-aware dates.
 - Protected GET/POST alert and reminder cron routes. No Slack Workflow Builder, Events API, interactive endpoint, slash command, or signing secret is used.
 - Twenty-eight editable default styles in `config/styles.js`; `STYLES_JSON` may replace them with another array of exactly 28 styles.
-- Direct Vercel Blob browser uploads, JPEG compression (1600 px longest edge / quality 0.8), 5 MB maximum uploaded object, and a server-authorized cleanup endpoint for removed photos.
+- Vercel Blob photo uploads through a same-origin server route, JPEG compression (1600 px longest edge / quality 0.8), a 4 MiB compressed request cap to stay below Vercel Function body limits, a 5 MB storage-side object ceiling, and a server-authorized cleanup endpoint for removed photos.
 - Supabase Postgres tables for cycles, submissions, photo ownership, and idempotency locks; application data is retained for 90 days and removed by the scheduled endpoints.
 - Slack Web API calls with 429/`Retry-After` handling, threaded/broadcast submission summaries, external native-file upload, and photo-link fallback.
 - No-index metadata and a disallow-all `robots.txt` response.
@@ -126,7 +126,7 @@ Vercel Cron uses UTC. If you intentionally switch away from cron-job.org, create
 - `GET|POST /api/cron/send`: requires `Authorization: Bearer <CRON_SECRET>`. Creates one cycle per current timezone date, signs its form link, posts a Block Kit alert, saves the alert channel/timestamp to Supabase, and skips duplicate dates unless `?force=1`.
 - `GET|POST /api/cron/reminder`: same authorization. Checks the latest cycle and posts one threaded reminder only if no submission exists.
 - `GET /f/[token]`: verifies the signed link and expiry on the server. Invalid, expired, missing, or unavailable links show a branded message with no stack trace.
-- `POST /api/upload`: Vercel Blob client-upload handler. It validates the signed form link before issuing an upload token, restricts content types to JPEG/PNG/WebP/HEIC, and caps each object at 5 MB. Only photo URLs registered in Supabase for that cycle are accepted at submit time.
+- `POST /api/upload`: validates the signed form link, JPEG/PNG/WebP/HEIC content type, and per-object size; compressed form photos are sent through the same-origin route and stored in Vercel Blob. Only photo URLs registered in Supabase for that cycle are accepted at submit time.
 - `POST /api/upload/delete`: authenticated best-effort cleanup used when a worker removes a photo or changes a style to Not Needed.
 - `POST /api/submit`: validates name, location, exactly 28 unique answers, status values, needed-style photos, and bags values. Supabase persistence happens before Slack delivery, so a Slack failure does not discard the submission. A repeated submission replaces the current cycle's saved version and is labelled “Updated submission”.
 - `GET /api/health`: booleans only for configured environment-variable names plus Supabase reachability.
