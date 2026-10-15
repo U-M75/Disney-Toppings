@@ -16,11 +16,11 @@ A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk 
 
 ## Brand assets and design choices
 
-The only supplied color was KSC pink `#FFA8BD`; the additional live-site colors and exact font names were left blank. This project therefore uses a replaceable pastel palette in the `:root` CSS variables at the top of `app/globals.css`: cream/off-white surfaces, dark plum text, pale pink, mint, and lilac accents. It does **not** claim these are the site's complete live palette.
+The interface now follows Kawaii Slime Company's current site palette: KSC pink `#FFA8BD`, soft pink `#FFE6F0`, aqua blues `#7CD5F3` / `#9ADFF7` / `#C7EAF8`, yellow `#FFF28A`, warm brown `#8A5D3B`, white, and blush-card `#FFF5F9`. These are centralized as CSS variables in `app/globals.css`.
 
-The interface uses a readable system-font fallback stack (`Nunito` is named in CSS but is not downloaded from an external font service). KSC's exact brand font has not been verified. If licensed fonts are supplied, place their `.woff2` files in `public/fonts/` and update the `--font-heading` / `--font-body` variables in `app/globals.css`.
+Typography follows the site's current theme: Quicksand for headings and body text, and Nunito for buttons. The variable WOFF2 files are self-hosted in `public/fonts/` so the app does not rely on an external font CDN; their SIL Open Font License files are included alongside them.
 
-`public/ksc-logo.svg` is a simple **KSC placeholder wordmark**, not an official logo. Replace it with the approved KSC artwork at the same path (or update the image references). The reference thumbnails are optional; each default style has no image.
+`public/ksc-logo.svg` remains a simple **KSC placeholder wordmark**, not an official logo; its colors are aligned with the site palette. Replace it with approved KSC artwork at the same path if supplied. The reference thumbnails are optional; each default style has no image.
 
 ## Local development
 
@@ -178,4 +178,4 @@ The test trigger uses the `CRON_SECRET` authorization header. Test links are HMA
 - Supabase, Slack, and Vercel Blob cannot be live-verified without your project/workspace credentials and stores. The package build can be verified locally; the end-to-end credentialed flow still needs the smoke tests above.
 - A photo uploaded and then abandoned without using Remove may remain as an unreferenced public Blob object. Removed photos and photos successfully attached to Slack are deleted; abandoned uploads need periodic storage review or a separate cleanup policy.
 - Slack cannot place a message in a thread owned by another channel. When the results channel differs from the alert channel, the app keeps the threaded/broadcast reply and native attachments in the alert channel and mirrors only the summary to the results channel.
-- The additional colors, exact KSC font, and official logo were not supplied. The pastel colors, system-font fallback stack, and SVG wordmark are fallbacks/placeholders.
+- The colors and font families now follow the public KSC site theme; the SVG KSC wordmark is still a placeholder because an approved official logo asset was not supplied.

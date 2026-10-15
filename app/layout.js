@@ -15,6 +15,8 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <head>
         <meta name="robots" content="noindex, nofollow" />
+        <link rel="preload" href="/fonts/quicksand-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/nunito-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body>{children}</body>
     </html>

@@ -1,28 +1,49 @@
+@font-face {
+  font-family: 'Quicksand';
+  src: url('/fonts/quicksand-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+}
+
 :root {
   --color-brand: #FFA8BD;
-  --color-brand-hover: #F78EA7;
-  --color-pink-soft: #FFF0F4;
-  --color-cream: #FFF9F5;
+  --color-brand-hover: #FFA8BD;
+  --color-pink-soft: #FFE6F0;
+  --color-cream: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-text: #402A3A;
-  --color-muted: #685263;
-  --color-border: #EBCBD5;
-  --color-border-strong: #DFAFBE;
-  --color-mint: #BFEDE2;
-  --color-mint-text: #24473F;
-  --color-lilac: #E8DDF8;
-  --color-lilac-text: #4C3769;
+  --color-card: #FFF5F9;
+  --color-text: #8A5D3B;
+  --color-ink: #1A1A1A;
+  --color-muted: #8A5D3B;
+  --color-border: #F5F5F5;
+  --color-border-strong: #C7EAF8;
+  --color-blue: #7CD5F3;
+  --color-blue-hover: #9ADFF7;
+  --color-blue-soft: #C7EAF8;
+  --color-success: #C7EAF8;
+  --color-success-text: #1A1A1A;
+  --color-focus: #7CD5F3;
   --color-danger: #822B43;
-  --color-danger-soft: #FFE6EA;
-  --color-gold-soft: #FFF1D7;
-  --color-shadow: rgba(64, 42, 58, 0.12);
-  --color-shadow-light: rgba(64, 42, 58, 0.07);
-  --shadow-card: 0 14px 36px var(--color-shadow);
-  --shadow-soft: 0 8px 24px var(--color-shadow-light);
-  --font-heading: 'Nunito', 'Arial Rounded MT Bold', system-ui, sans-serif;
-  --font-body: 'Nunito', 'Arial Rounded MT Bold', system-ui, sans-serif;
-  --radius-card: 24px;
-  --radius-input: 15px;
+  --color-danger-soft: #FFE6F0;
+  --color-yellow-soft: #FFF28A;
+  --color-shadow: rgba(138, 93, 59, 0.10);
+  --color-shadow-light: rgba(138, 93, 59, 0.055);
+  --shadow-card: 0 8px 24px var(--color-shadow);
+  --shadow-soft: 0 4px 14px var(--color-shadow-light);
+  --font-heading: 'Quicksand', 'Trebuchet MS', system-ui, sans-serif;
+  --font-body: 'Quicksand', system-ui, sans-serif;
+  --font-button: 'Nunito', system-ui, sans-serif;
+  --radius-card: 17px;
+  --radius-input: 11px;
 }
 
 * {
@@ -41,9 +62,9 @@ body {
   color: var(--color-text);
   background:
     radial-gradient(circle at 6% 4%, var(--color-pink-soft), transparent 27rem),
-    radial-gradient(circle at 96% 14%, var(--color-lilac), transparent 22rem),
+    radial-gradient(circle at 96% 14%, var(--color-blue-soft), transparent 22rem),
     var(--color-cream);
-  font-family: var(--font-body), 'Nunito', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -53,6 +74,11 @@ button,
 input,
 select {
   font: inherit;
+}
+
+button,
+.button {
+  font-family: var(--font-button), system-ui, sans-serif;
 }
 
 button,
@@ -66,7 +92,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid var(--color-lilac-text);
+  outline: 3px solid var(--color-focus);
   outline-offset: 3px;
 }
 
@@ -81,7 +107,7 @@ h1,
 h2,
 h3 {
   color: var(--color-text);
-  font-family: var(--font-heading), 'Fredoka', 'Trebuchet MS', sans-serif;
+  font-family: var(--font-heading);
   line-height: 1.12;
 }
 
@@ -141,7 +167,7 @@ h3 {
 
 .eyebrow {
   margin: 0 0 9px;
-  color: var(--color-lilac-text);
+  color: var(--color-text);
   font-size: 0.8rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -180,7 +206,7 @@ h3 {
 .hero-sparkle {
   top: 24px;
   right: clamp(16px, 6vw, 74px);
-  color: var(--color-lilac-text);
+  color: var(--color-blue);
   font-size: 2.7rem;
 }
 
@@ -192,7 +218,7 @@ h3 {
   padding: 16px 18px;
   border: 1px solid var(--color-border-strong);
   border-radius: 18px;
-  background: var(--color-gold-soft);
+  background: var(--color-yellow-soft);
   box-shadow: var(--shadow-soft);
 }
 
@@ -217,7 +243,7 @@ h3 {
 .message-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
-  background: var(--color-surface);
+  background: var(--color-card);
   box-shadow: var(--shadow-soft);
 }
 
@@ -358,24 +384,27 @@ h3 {
 }
 
 .button-primary {
-  background: var(--color-brand);
-  color: var(--color-text);
+  background: var(--color-blue);
+  color: var(--color-ink);
   box-shadow: 0 5px 0 var(--color-border-strong);
 }
 
 .button-primary:hover:not(:disabled) {
-  background: var(--color-brand-hover);
+  background: var(--color-blue-hover);
 }
 
 .button-secondary {
-  border-color: var(--color-border);
-  background: var(--color-pink-soft);
-  color: var(--color-text);
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-ink);
 }
 
-.button-secondary:hover:not(:disabled),
+.button-secondary:hover:not(:disabled) {
+  background: var(--color-pink-soft);
+}
+
 .button-outline:hover:not(:disabled) {
-  background: var(--color-lilac);
+  background: var(--color-blue-soft);
 }
 
 .button-outline {
@@ -419,7 +448,7 @@ h3 {
 
 .style-number {
   padding-top: 2px;
-  color: var(--color-lilac-text);
+  color: var(--color-text);
   font-size: 1.2rem;
 }
 
@@ -463,11 +492,11 @@ h3 {
 }
 
 .style-card-replace {
-  border-color: var(--color-lilac-text);
+  border-color: var(--color-blue);
 }
 
 .style-card-needed.style-card-replace {
-  box-shadow: 0 9px 28px rgba(117, 75, 134, 0.14);
+  box-shadow: 0 9px 28px rgba(124, 213, 243, 0.18);
 }
 
 .test-photo-note {
@@ -583,7 +612,7 @@ h3 {
 }
 
 .photo-ready {
-  color: var(--color-mint-text);
+  color: var(--color-success-text);
 }
 
 .text-button {
@@ -668,7 +697,7 @@ h3 {
 }
 
 .uploading-label {
-  color: var(--color-lilac-text);
+  color: var(--color-text);
 }
 
 .submit-button {
@@ -740,8 +769,8 @@ h3 {
   padding: 8px 15px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-mint);
-  color: var(--color-mint-text);
+  background: var(--color-success);
+  color: var(--color-success-text);
   font-weight: 900;
 }
 
@@ -756,7 +785,7 @@ h3 {
   padding: 18px;
   border: 1px solid var(--color-border);
   border-radius: 19px;
-  background: var(--color-cream);
+  background: var(--color-card);
   text-align: left;
 }
 
@@ -776,7 +805,7 @@ h3 {
 
 .nothing-needed {
   margin: 0;
-  color: var(--color-mint-text);
+  color: var(--color-success-text);
   font-weight: 900;
 }
 
@@ -796,12 +825,12 @@ h3 {
 }
 
 .delivery-success {
-  background: var(--color-mint);
-  color: var(--color-mint-text);
+  background: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .delivery-warning {
-  background: var(--color-gold-soft);
+  background: var(--color-yellow-soft);
   color: var(--color-text);
 }
 
@@ -980,7 +1009,7 @@ h3 {
   padding: 16px 18px;
   border: 1px solid var(--color-border-strong);
   border-radius: 18px;
-  background: var(--color-gold-soft);
+  background: var(--color-yellow-soft);
   color: var(--color-text);
   box-shadow: var(--shadow-soft);
 }
@@ -1028,8 +1057,8 @@ h3 {
   padding: 18px;
   border: 1px solid var(--color-border-strong);
   border-radius: 18px;
-  background: var(--color-mint);
-  color: var(--color-mint-text);
+  background: var(--color-success);
+  color: var(--color-success-text);
 }
 
 .test-console-result p {
@@ -1037,24 +1066,12 @@ h3 {
 }
 
 /* Compact, cleaner visual pass: calm spacing, normal type scale, clear hierarchy. */
-:root {
-  --color-cream: #FFFCFA;
-  --color-surface: #FFFFFF;
-  --color-text: #33262E;
-  --color-muted: #655963;
-  --color-border: #EADFE3;
-  --color-border-strong: #DCC9D1;
-  --color-brand: #F5A0B6;
-  --color-brand-hover: #E989A3;
-  --color-pink-soft: #FFF4F7;
-  --shadow-card: 0 8px 24px rgba(51, 38, 46, 0.07);
-  --shadow-soft: 0 4px 14px rgba(51, 38, 46, 0.055);
-  --radius-card: 17px;
-  --radius-input: 11px;
-}
 
 body {
-  background: var(--color-cream);
+  background:
+    radial-gradient(circle at 6% 4%, var(--color-pink-soft), transparent 27rem),
+    radial-gradient(circle at 96% 14%, var(--color-blue-soft), transparent 22rem),
+    var(--color-cream);
   font-size: 15px;
   line-height: 1.45;
 }
@@ -1062,7 +1079,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-body), 'Nunito', system-ui, sans-serif;
+  font-family: var(--font-heading);
   line-height: 1.2;
 }
 
@@ -1229,7 +1246,7 @@ h3 {
 }
 
 .style-card-needed {
-  box-shadow: 0 4px 14px rgba(233, 137, 163, 0.12);
+  box-shadow: 0 4px 14px rgba(255, 168, 189, 0.15);
 }
 
 .style-card-heading {
@@ -1337,8 +1354,8 @@ h3 {
 .sticky-submit-wrap {
   padding: 8px max(12px, calc((100vw - 1080px) / 2)) max(8px, env(safe-area-inset-bottom));
   border-color: var(--color-border);
-  background: rgba(255, 252, 250, 0.97);
-  box-shadow: 0 -3px 12px rgba(51, 38, 46, 0.05);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -3px 12px rgba(138, 93, 59, 0.06);
 }
 
 .sticky-submit-inner {
