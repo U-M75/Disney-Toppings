@@ -4,6 +4,9 @@ export const dynamic = 'force-dynamic';
 
 const ENV_NAMES = [
   'SLACK_BOT_TOKEN',
+  'SLACK_CLIENT_ID',
+  'SLACK_CLIENT_SECRET',
+  'ENABLE_SLACK_OTP_AUTH',
   'SLACK_ALERT_CHANNEL_ID',
   'SLACK_RESULTS_CHANNEL_ID',
   'SLACK_ALERT_MENTION',
@@ -25,6 +28,7 @@ const ENV_NAMES = [
 export async function GET() {
   const env = Object.fromEntries(ENV_NAMES.map((name) => [name, Boolean(process.env[name]?.trim())]));
   env.ENABLE_SLACK_TEST_MODE = process.env.ENABLE_SLACK_TEST_MODE?.trim().toLowerCase() === 'true';
+  env.ENABLE_SLACK_OTP_AUTH = process.env.ENABLE_SLACK_OTP_AUTH?.trim().toLowerCase() === 'true';
   let supabaseReachable = false;
   try {
     const { error } = await getSupabase()

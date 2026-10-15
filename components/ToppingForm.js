@@ -224,6 +224,13 @@ export default function ToppingForm({
         body: JSON.stringify({ token, name, location: form.location, answers })
       });
       const data = await response.json().catch(() => ({}));
+      if (response.status === 401 && data.code === 'AUTH_REQUIRED') {
+        const purpose = testMode ? 'test_console' : 'staff';
+        const returnTo = testMode ? `/test-form/${token}` : `/f/${token}`;
+        const query = new URLSearchParams({ purpose, returnTo }).toString();
+        window.location.assign(`/api/auth/slack/start?${query}`);
+        return;
+      }
       if (!response.ok || !data.ok) {
         const returnedErrors = data.fieldErrors && typeof data.fieldErrors === 'object' ? data.fieldErrors : {};
         setErrors(returnedErrors);

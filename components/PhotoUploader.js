@@ -42,6 +42,10 @@ function uploadThroughApp(file, token, styleId, onProgress) {
       }
       if (request.status >= 200 && request.status < 300 && typeof data.url === 'string') {
         resolve(data);
+      } else if (request.status === 401 && data.code === 'AUTH_REQUIRED') {
+        const query = new URLSearchParams({ purpose: 'staff', returnTo: `/f/${token}` }).toString();
+        window.location.assign(`/api/auth/slack/start?${query}`);
+        reject(new Error('Your Slack sign-in expired. Redirecting to sign-in…'));
       } else {
         reject(new Error(data.error || 'The photo could not be uploaded. Please try again.'));
       }

@@ -2,6 +2,7 @@ import { getAppBaseUrl, getRequiredEnv } from '../../../../lib/config';
 import { checkCronAuthorization } from '../../../../lib/cron-auth';
 import { createSlackTestFormToken, getSlackTestLinkTtlMs, isSlackTestModeEnabled } from '../../../../lib/test-mode';
 import { formatExpiryDateTime } from '../../../../lib/time';
+import { hasRequiredAuthSession, isSlackOtpAuthEnabled } from '../../../../lib/otp-auth';
 import { postSlackTestAlert, postSlackTestFormLink } from '../../../../lib/slack';
 
 export const dynamic = 'force-dynamic';
@@ -13,9 +14,19 @@ function json(body, status = 200) {
 export async function POST(request) {
   if (!isSlackTestModeEnabled()) return json({ ok: false, error: 'Temporary Slack test mode is disabled.' }, 404);
 
-  const auth = checkCronAuthorization(request);
-  if (!auth.configured) return json({ ok: false, error: 'The test trigger is not configured.' }, 500);
-  if (!auth.authorized) return json({ ok: false, error: 'The test authorization was not accepted.' }, 401);
+  if (isSlackOtpAuthEnabled()) {
+    try {
+      if (!await hasRequiredAuthSession('test_console')) {
+        return json({ ok: false, code: 'AUTH_REQUIRED', error: 'Your Slack sign-in has expired. Sign in again before starting a test.' }, 401);
+      }
+    } catch {
+      return json({ ok: false, error: 'Secure sign-in could not be checked right now. Please try again.' }, 503);
+    }
+  } else {
+    const auth = checkCronAuthorization(request);
+    if (!auth.configured) return json({ ok: false, error: 'The test trigger is not configured.' }, 500);
+    if (!auth.authorized) return json({ ok: false, error: 'The test authorization was not accepted.' }, 401);
+  }
 
   try {
     const channel = getRequiredEnv('SLACK_ALERT_CHANNEL_ID');

@@ -4,14 +4,15 @@ import { ALLOWED_IMAGE_TYPES, MAX_PHOTO_BYTES, getRequiredEnv } from '../../../l
 import { getSupabase, registerBlobUrl } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { isSafeVercelBlobUrl } from '../../../lib/validation';
+import { hasRequiredAuthSession } from '../../../lib/otp-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const MAX_PROXY_UPLOAD_BYTES = 4 * 1024 * 1024;
 
-function uploadError(message, status = 400) {
-  return Response.json({ error: message }, { status, headers: { 'Cache-Control': 'no-store' } });
+function uploadError(message, status = 400, code) {
+  return Response.json({ error: message, ...(code ? { code } : {}) }, { status, headers: { 'Cache-Control': 'no-store' } });
 }
 
 function extensionForType(contentType) {
@@ -67,6 +68,14 @@ async function handleSameOriginUpload(request) {
 }
 
 export async function POST(request) {
+  try {
+    if (!await hasRequiredAuthSession('staff')) {
+      return uploadError('Your Slack sign-in has expired. Sign in again before uploading a photo.', 401, 'AUTH_REQUIRED');
+    }
+  } catch {
+    return uploadError('Secure sign-in could not be checked right now. Please try again.', 503);
+  }
+
   if (!process.env.BLOB_READ_WRITE_TOKEN?.trim()) {
     return uploadError('Photo uploads are not configured. Ask an administrator to connect a Vercel Blob store.', 503);
   }
