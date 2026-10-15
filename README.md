@@ -1,4 +1,4 @@
-# KSC Disney Topping Update 
+# KSC Disney Topping Update
 
 A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk checks. It creates signed form links, records one of 28 style answers, receives photos directly into Vercel Blob, stores cycles/submissions in Supabase Postgres, and posts a Slack summary with native Slack photo files in the alert thread. **This version does not use Redis or Upstash.**
 
@@ -8,7 +8,7 @@ A mobile-first, KSC-branded Next.js app for scheduled Disney DIY Toppings kiosk 
 - Signed `cycleId.hmac` links with configurable expiry and timezone-aware dates.
 - Protected GET/POST alert and reminder cron routes. No Slack Workflow Builder, Events API, interactive endpoint, slash command, or signing secret is used.
 - Twenty-eight editable default styles in `config/styles.js`; `STYLES_JSON` may replace them with another array of exactly 28 styles.
-- Vercel Blob photo uploads through a same-origin server route, JPEG compression (1600 px longest edge / quality 0.8), a 4 MiB compressed request cap to stay below Vercel Function body limits, a 5 MB storage-side object ceiling, and a server-authorized cleanup endpoint for removed photos.
+- Vercel Blob photo uploads through a same-origin server route, JPEG compression (1600 px longest edge / quality 0.8), browser-side HEIC/HEIF-to-JPEG conversion when needed, a 4 MiB compressed request cap to stay below Vercel Function body limits, a 5 MB storage-side object ceiling, and a server-authorized cleanup endpoint for removed photos.
 - Supabase Postgres tables for cycles, submissions, photo ownership, and idempotency locks; application data is retained for 90 days and removed by the scheduled endpoints.
 - Slack Web API calls with 429/`Retry-After` handling, threaded/broadcast submission summaries, external native-file upload, and photo-link fallback.
 - No-index metadata and a disallow-all `robots.txt` response.
