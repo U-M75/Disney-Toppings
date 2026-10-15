@@ -1,9 +1,7 @@
 import BrandedMessage from '../../../components/BrandedMessage';
-import SlackAuthGate from '../../../components/SlackAuthGate';
 import ToppingForm from '../../../components/ToppingForm';
 import { getAppTimezone, getLocations, getRequirePhoto, getShowBagsField, getStyles } from '../../../lib/config';
 import { getSubmission, getSupabase } from '../../../lib/supabase';
-import { isSlackOtpAuthEnabled, getCurrentAuthSession } from '../../../lib/otp-auth';
 import { resolveFormToken } from '../../../lib/token';
 import { formatDateLabel, formatDateTime } from '../../../lib/time';
 
@@ -40,21 +38,6 @@ export default async function FormPage({ params }) {
             : 'This link does not look right. Please open the latest topping update link from Slack.'}
       />
     );
-  }
-
-  if (isSlackOtpAuthEnabled()) {
-    try {
-      const session = await getCurrentAuthSession('staff');
-      if (!session) return <SlackAuthGate purpose="staff" returnTo={`/f/${token}`} />;
-    } catch {
-      return (
-        <BrandedMessage
-          eyebrow="Secure staff sign-in"
-          title="Sign-in is temporarily unavailable"
-          message="Please try again shortly. If the problem continues, ask a manager to check the Slack sign-in setup."
-        />
-      );
-    }
   }
 
   try {

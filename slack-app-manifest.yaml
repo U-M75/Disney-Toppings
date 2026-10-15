@@ -14,11 +14,6 @@ oauth_config:
       - chat:write
       - files:write
       - chat:write.public
-      - im:write
-    user:
-      - openid
-      - profile
-      - email
 settings:
   org_deploy_enabled: false
   socket_mode_enabled: false

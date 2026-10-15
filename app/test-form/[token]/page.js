@@ -1,14 +1,12 @@
 import BrandedMessage from '../../../components/BrandedMessage';
-import SlackAuthGate from '../../../components/SlackAuthGate';
 import ToppingForm from '../../../components/ToppingForm';
 import { getAppTimezone, getLocations, getShowBagsField, getStyles } from '../../../lib/config';
-import { getCurrentAuthSession, isSlackOtpAuthEnabled } from '../../../lib/otp-auth';
 import { verifySlackTestFormToken } from '../../../lib/test-mode';
 import { formatDateLabel } from '../../../lib/time';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TemporaryTestFormPage({ params }) {
+export default function TemporaryTestFormPage({ params }) {
   const token = params?.token;
   const resolved = verifySlackTestFormToken(token);
 
@@ -24,22 +22,6 @@ export default async function TemporaryTestFormPage({ params }) {
         home={false}
       />
     );
-  }
-
-  if (isSlackOtpAuthEnabled()) {
-    try {
-      const session = await getCurrentAuthSession('test_console');
-      if (!session) return <SlackAuthGate purpose="test_console" returnTo={`/test-form/${token}`} />;
-    } catch {
-      return (
-        <BrandedMessage
-          eyebrow="Temporary Slack test"
-          title="Secure sign-in is unavailable"
-          message="Please try again shortly or ask an administrator to check the Slack sign-in setup."
-          home={false}
-        />
-      );
-    }
   }
 
   try {

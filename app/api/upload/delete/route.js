@@ -2,19 +2,10 @@ import { del } from '@vercel/blob';
 import { getAllowedBlob, getSupabase, removeAllowedBlob } from '../../../../lib/supabase';
 import { resolveFormToken } from '../../../../lib/token';
 import { isSafeVercelBlobUrl } from '../../../../lib/validation';
-import { hasRequiredAuthSession } from '../../../../lib/otp-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
-  try {
-    if (!await hasRequiredAuthSession('staff')) {
-      return Response.json({ ok: false, code: 'AUTH_REQUIRED', error: 'Your Slack sign-in has expired.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
-    }
-  } catch {
-    return Response.json({ ok: false, error: 'Secure sign-in could not be checked right now.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
-  }
-
   let body;
   try {
     body = await request.json();

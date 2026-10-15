@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function TestConsoleClient({ otpRequired = false }) {
+export default function TestConsoleClient() {
   const [secret, setSecret] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -12,7 +12,7 @@ export default function TestConsoleClient({ otpRequired = false }) {
   async function startTest(event) {
     event.preventDefault();
     const authorizationSecret = secret.trim();
-    if (!otpRequired && !authorizationSecret) {
+    if (!authorizationSecret) {
       setError('Enter the CRON_SECRET from your Vercel environment variables.');
       return;
     }
@@ -24,16 +24,11 @@ export default function TestConsoleClient({ otpRequired = false }) {
     try {
       const response = await fetch('/api/test/start', {
         method: 'POST',
-        ...(otpRequired ? {} : { headers: { Authorization: `Bearer ${authorizationSecret}` } }),
+        headers: { Authorization: `Bearer ${authorizationSecret}` },
         cache: 'no-store'
       });
       const data = await response.json().catch(() => ({}));
       setSecret('');
-      if (response.status === 401 && data.code === 'AUTH_REQUIRED' && otpRequired) {
-        const query = new URLSearchParams({ purpose: 'test_console', returnTo: '/test-console' }).toString();
-        window.location.assign(`/api/auth/slack/start?${query}`);
-        return;
-      }
       if (!response.ok || !data.ok || typeof data.testUrl !== 'string') {
         setError(data.error || 'The test alert could not be started. Please try again.');
         return;
@@ -57,25 +52,21 @@ export default function TestConsoleClient({ otpRequired = false }) {
         <h1>Start a test alert</h1>
         <p className="message-copy">This sends a clearly labeled test message to the configured Slack channel and creates a 30-minute test form link. Test responses are posted to Slack but are not saved. Photos are disabled.</p>
         <form className="test-console-form" onSubmit={startTest}>
-          {otpRequired ? (
-            <p className="test-console-help">You’re signed in with Slack. No cron secret is needed for this test.</p>
-          ) : (
-            <div className="field">
-              <label htmlFor="cron-secret">Vercel CRON_SECRET <span className="required-word">(required)</span></label>
-              <input
-                className="form-control"
-                id="cron-secret"
-                type="password"
-                autoComplete="off"
-                value={secret}
-                onChange={(event) => setSecret(event.target.value)}
-                aria-describedby="cron-secret-help"
-                required
-              />
-              <p className="test-console-help" id="cron-secret-help">Enter it only here. It is sent to this site over HTTPS, is not saved in the browser, and must not be shared in chat.</p>
-            </div>
-          )}
-          <button className="button button-primary" type="submit" disabled={busy || (!otpRequired && !secret.trim())}>
+          <div className="field">
+            <label htmlFor="cron-secret">Vercel CRON_SECRET <span className="required-word">(required)</span></label>
+            <input
+              className="form-control"
+              id="cron-secret"
+              type="password"
+              autoComplete="off"
+              value={secret}
+              onChange={(event) => setSecret(event.target.value)}
+              aria-describedby="cron-secret-help"
+              required
+            />
+            <p className="test-console-help" id="cron-secret-help">Enter it only here. It is sent to this site over HTTPS, is not saved in the browser, and must not be shared in chat.</p>
+          </div>
+          <button className="button button-primary" type="submit" disabled={busy || !secret.trim()}>
             {busy ? 'Sending test alert…' : 'Send test alert to Slack'}
           </button>
         </form>

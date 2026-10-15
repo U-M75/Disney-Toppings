@@ -1,12 +1,10 @@
 import BrandedMessage from '../../components/BrandedMessage';
-import SlackAuthGate from '../../components/SlackAuthGate';
 import TestConsoleClient from '../../components/TestConsoleClient';
-import { isSlackOtpAuthEnabled, getCurrentAuthSession } from '../../lib/otp-auth';
 import { isSlackTestModeEnabled } from '../../lib/test-mode';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TestConsolePage() {
+export default function TestConsolePage() {
   if (!isSlackTestModeEnabled()) {
     return (
       <BrandedMessage
@@ -17,23 +15,5 @@ export default async function TestConsolePage() {
       />
     );
   }
-
-  const otpRequired = isSlackOtpAuthEnabled();
-  if (otpRequired) {
-    try {
-      const session = await getCurrentAuthSession('test_console');
-      if (!session) return <SlackAuthGate purpose="test_console" returnTo="/test-console" />;
-    } catch {
-      return (
-        <BrandedMessage
-          eyebrow="Temporary test"
-          title="Secure sign-in is unavailable"
-          message="Please try again shortly. If the problem continues, ask an administrator to check the Slack sign-in setup."
-          home={false}
-        />
-      );
-    }
-  }
-
-  return <TestConsoleClient otpRequired={otpRequired} />;
+  return <TestConsoleClient />;
 }

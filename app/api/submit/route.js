@@ -4,7 +4,6 @@ import { resolveFormToken } from '../../../lib/token';
 import { cleanPersonName, isSafeVercelBlobUrl } from '../../../lib/validation';
 import { postSubmissionResult, uploadSubmissionPhotos } from '../../../lib/slack';
 import { formatDateTime } from '../../../lib/time';
-import { hasRequiredAuthSession } from '../../../lib/otp-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -18,14 +17,6 @@ function invalid(message, fieldErrors, status = 400) {
 }
 
 export async function POST(request) {
-  try {
-    if (!await hasRequiredAuthSession('staff')) {
-      return json({ ok: false, code: 'AUTH_REQUIRED', error: 'Your Slack sign-in has expired. Sign in again to submit this update.' }, 401);
-    }
-  } catch {
-    return json({ ok: false, error: 'Secure sign-in could not be checked right now. Please try again.' }, 503);
-  }
-
   let body;
   try {
     body = await request.json();

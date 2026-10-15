@@ -3,7 +3,6 @@ import { cleanPersonName } from '../../../../lib/validation';
 import { verifySlackTestFormToken, isSlackTestModeEnabled } from '../../../../lib/test-mode';
 import { formatDateTime } from '../../../../lib/time';
 import { postSlackTestSubmission } from '../../../../lib/slack';
-import { hasRequiredAuthSession } from '../../../../lib/otp-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +16,6 @@ function invalid(message, fieldErrors, status = 400) {
 
 export async function POST(request) {
   if (!isSlackTestModeEnabled()) return json({ ok: false, error: 'Temporary Slack test mode is disabled.' }, 404);
-  try {
-    if (!await hasRequiredAuthSession('test_console')) {
-      return json({ ok: false, code: 'AUTH_REQUIRED', error: 'Your Slack sign-in has expired. Sign in again to use this test form.' }, 401);
-    }
-  } catch {
-    return json({ ok: false, error: 'Secure sign-in could not be checked right now. Please try again.' }, 503);
-  }
 
   let body;
   try {
