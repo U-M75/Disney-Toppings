@@ -17,6 +17,13 @@ export default function TeamLanding() {
           </ol>
         </div>
         <p className="landing-note">Need a fresh link? Ask your manager to send or resend the latest Slack update.</p>
+        <aside className="landing-manager-access" aria-label="Manager access">
+          <div className="landing-manager-copy">
+            <p className="eyebrow">For managers</p>
+            <p>Review recent bin checks and per-style bag counts. A password is required.</p>
+          </div>
+          <a className="button button-primary landing-manager-button" href="/dashboard">Manager dashboard</a>
+        </aside>
       </section>
       <p className="message-footer">KSC · Disney team resources</p>
     </main>

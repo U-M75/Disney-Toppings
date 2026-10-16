@@ -20,7 +20,7 @@ Associate form links are signed, reusable for the configured period (72 hours by
 
 ## KSC brand and visual design
 
-The refreshed interface keeps KSC's soft pink-and-aqua identity but uses a quieter neutral page, white cards, fine borders, restrained accents, and minimal shadows to reduce visual clutter. Bin cards reflow from one to three columns, and the dashboard is responsive for phone and desktop. Quicksand (body/display) and Nunito (buttons) are self-hosted in `public/fonts/` with their SIL Open Font Licenses. `public/ksc-logo.svg` is a KSC placeholder wordmark, not official artwork; replace it with approved artwork at the same path if available.
+The refreshed interface keeps KSC's soft pink-and-aqua identity but uses a quieter neutral page, white cards, fine borders, restrained accents, and minimal shadows to reduce visual clutter. Bin cards reflow from one to three columns, and the dashboard is responsive for phone and desktop. Quicksand (body/display) and Nunito (buttons) are self-hosted in `public/fonts/` with their SIL Open Font Licenses. `public/ksc-logo.svg` is the KSC logo asset used on the official website, self-hosted so the branded preview works without external image requests.
 
 ## Local development
 
@@ -101,7 +101,7 @@ openssl rand -base64 48
 
 ## Manager dashboard
 
-Open `https://<your-deployed-domain>/dashboard` and sign in with the manager password configured as `DASHBOARD_SECRET` (not your Vercel account password). If it is not set yet, add it in Vercel → Project → Settings → Environment Variables, then redeploy. Keep the value private; do not put it in chat. The dashboard session is an HttpOnly cookie that expires after 12 hours. The dashboard shows the latest check, searchable/filterable submission history for up to 90 days, bin status, per-style bag counts, and whether a photo was submitted. It does not add OTP to the associate form. If `DASHBOARD_SECRET` is unset, the dashboard displays a setup message.
+The homepage (`/`) now has a **Manager dashboard** button; it opens the protected sign-in page. You can also open `https://<your-deployed-domain>/dashboard` directly. Sign in with the manager password configured as `DASHBOARD_SECRET` (not your Vercel account password). If it is not set yet, add it in Vercel → Project → Settings → Environment Variables, then redeploy. Keep the value private; do not put it in chat. The dashboard session is an HttpOnly cookie that expires after 12 hours. The dashboard shows the latest check, searchable/filterable submission history for up to 90 days, bin status, per-style bag counts, and whether a photo was submitted. It does not add OTP to the associate form. If `DASHBOARD_SECRET` is unset, the dashboard displays a setup message.
 
 ## Existing cron-job.org schedule
 
@@ -163,4 +163,4 @@ Test form tokens are signed with `FORM_SECRET`, restricted to the configured Sla
 - Supabase, Slack, and Vercel Blob cannot be live-verified without access to the connected projects. The end-to-end credentialed flow still needs the smoke tests above.
 - Abandoned photos may remain in public Blob storage; deleted and Slack-attached photos are cleaned up.
 - If the results channel differs from the alert channel, Slack cannot thread across channels. The canonical result and attachments remain in the alert thread; only the summary is mirrored to the results channel.
-- The KSC palette and fonts follow the public site theme. The SVG wordmark is still a placeholder because approved official artwork was not supplied.
+- The KSC logo, palette, and fonts follow assets and styling from the public KSC website.
