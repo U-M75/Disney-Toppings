@@ -18,12 +18,12 @@ async function deleteUploadedPhoto(token, url) {
   }
 }
 
-function uploadThroughApp(file, token, styleId, onProgress) {
+function uploadThroughApp(file, token, binId, onProgress) {
   return new Promise((resolve, reject) => {
     const body = new FormData();
     body.append('clientPayload', token);
-    body.append('styleId', styleId);
-    body.append('file', file, file.name || 'topping-photo.jpg');
+    body.append('binId', binId);
+    body.append('file', file, file.name || 'bin-photo.jpg');
 
     const request = new XMLHttpRequest();
     request.open('POST', '/api/upload');
@@ -52,9 +52,8 @@ function uploadThroughApp(file, token, styleId, onProgress) {
   });
 }
 
-export default function PhotoUploader({ token, styleId, styleName, photoUrl, onChange, onUploadingChange, required }) {
-  const cameraInput = useRef(null);
-  const libraryInput = useRef(null);
+export default function PhotoUploader({ token, binId, binLabel, photoUrl, onChange, onUploadingChange }) {
+  const fileInput = useRef(null);
   const alive = useRef(true);
   const uploadingCallback = useRef(onUploadingChange);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -70,9 +69,9 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
     alive.current = true;
     return () => {
       alive.current = false;
-      uploadingCallback.current?.(styleId, false);
+      uploadingCallback.current?.(binId, false);
     };
-  }, [styleId]);
+  }, [binId]);
 
   async function onFileSelected(event) {
     const file = event.target.files?.[0];
@@ -87,8 +86,8 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
       if (!alive.current) return;
       setIsPreparing(false);
       setIsUploading(true);
-      uploadingCallback.current?.(styleId, true);
-      const result = await uploadThroughApp(compressedFile, token, styleId, (percentage) => {
+      uploadingCallback.current?.(binId, true);
+      const result = await uploadThroughApp(compressedFile, token, binId, (percentage) => {
         if (alive.current) setProgress(percentage);
       });
 
@@ -107,7 +106,7 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
       if (alive.current) {
         setIsPreparing(false);
         setIsUploading(false);
-        uploadingCallback.current?.(styleId, false);
+        uploadingCallback.current?.(binId, false);
       }
     }
   }
@@ -126,36 +125,18 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
         <button
           className="button button-secondary photo-action"
           type="button"
-          onClick={() => cameraInput.current?.click()}
+          onClick={() => fileInput.current?.click()}
           disabled={busy}
         >
-          📷 {photoUrl ? 'Retake photo' : 'Take photo'}
-        </button>
-        <button
-          className="button button-secondary photo-action"
-          type="button"
-          onClick={() => libraryInput.current?.click()}
-          disabled={busy}
-        >
-          🖼️ Choose from library
+          {busy ? (isPreparing ? 'Preparing photo…' : 'Uploading…') : photoUrl ? 'Change photo' : 'Upload photo'}
         </button>
         <input
-          ref={cameraInput}
-          className="visually-hidden-input"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onFileSelected}
-          aria-label={`Take a photo for ${styleName}`}
-          tabIndex={-1}
-        />
-        <input
-          ref={libraryInput}
+          ref={fileInput}
           className="visually-hidden-input"
           type="file"
           accept="image/*"
           onChange={onFileSelected}
-          aria-label={`Choose a photo for ${styleName}`}
+          aria-label={`Upload photo for ${binLabel}`}
           tabIndex={-1}
         />
       </div>
@@ -169,7 +150,7 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
 
       {photoUrl && !busy && (
         <div className="photo-preview-row">
-          <img className="photo-preview" src={photoUrl} alt={`Uploaded photo for ${styleName}`} />
+          <img className="photo-preview" src={photoUrl} alt={`Uploaded photo for ${binLabel}`} />
           <div className="photo-preview-copy">
             <span className="photo-ready">✓ Photo attached</span>
             <button className="text-button remove-photo" type="button" onClick={removePhoto}>
@@ -179,7 +160,7 @@ export default function PhotoUploader({ token, styleId, styleName, photoUrl, onC
         </div>
       )}
 
-      <p className="photo-help">{required ? 'A photo is required for a style marked Needed or Replace.' : 'A photo is optional for this style.'} Images are compressed before upload.</p>
+      <p className="photo-help">A photo is required for every bin marked Yes.</p>
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   );

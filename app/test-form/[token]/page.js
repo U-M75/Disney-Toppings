@@ -1,6 +1,6 @@
 import BrandedMessage from '../../../components/BrandedMessage';
 import ToppingForm from '../../../components/ToppingForm';
-import { getAppTimezone, getLocations, getStyles } from '../../../lib/config';
+import { getAppTimezone, getBins, getLocations } from '../../../lib/config';
 import { verifySlackTestFormToken } from '../../../lib/test-mode';
 import { formatDateLabel } from '../../../lib/time';
 
@@ -30,10 +30,9 @@ export default function TemporaryTestFormPage({ params }) {
       <ToppingForm
         token={token}
         cycleLabel="Temporary Slack test"
-        styles={getStyles()}
+        bins={getBins()}
         locations={getLocations()}
         todayLabel={formatDateLabel(new Date(), timezone)}
-        requirePhoto={false}
         existingSubmission={null}
         testMode
       />

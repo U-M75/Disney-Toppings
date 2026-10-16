@@ -30,10 +30,10 @@ async function handleSameOriginUpload(request) {
   }
 
   const clientPayload = form.get('clientPayload');
-  const styleId = form.get('styleId');
+  const binId = form.get('binId');
   const file = form.get('file');
   if (typeof clientPayload !== 'string' || !clientPayload) return uploadError('This form link is not valid.', 400);
-  if (typeof styleId !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(styleId)) return uploadError('The style was not accepted.', 400);
+  if (typeof binId !== 'string' || !/^bin-(?:[1-9]|1[0-9]|2[0-8])$/.test(binId)) return uploadError('The bin was not accepted.', 400);
   if (!file || typeof file.arrayBuffer !== 'function' || typeof file.size !== 'number') return uploadError('Choose a photo to upload.', 400);
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return uploadError('Choose a JPEG, PNG, WebP, or HEIC photo.', 415);
   if (file.size <= 0) return uploadError('The selected photo is empty.', 400);
@@ -48,7 +48,7 @@ async function handleSameOriginUpload(request) {
       return uploadError(resolved.reason === 'expired' ? 'This form link has expired.' : 'This form link is not valid.', 400);
     }
 
-    const pathname = `topping-${styleId}-${Date.now()}.${extensionForType(file.type)}`;
+    const pathname = `topping-${binId}-${Date.now()}.${extensionForType(file.type)}`;
     const blob = await put(pathname, file, {
       access: 'public',
       addRandomSuffix: true,

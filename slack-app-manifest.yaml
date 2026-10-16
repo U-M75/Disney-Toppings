@@ -2,7 +2,7 @@ _metadata:
   major_version: 1
 display_information:
   name: KSC Disney Topping Update
-  description: Sends scheduled Disney kiosk topping check-ins and shares restock results.
+  description: Sends scheduled end-of-day Disney bin checks and shares restock results.
   background_color: "#FFA8BD"
 features:
   bot_user:

@@ -1,6 +1,6 @@
 import BrandedMessage from '../../../components/BrandedMessage';
 import ToppingForm from '../../../components/ToppingForm';
-import { getAppTimezone, getLocations, getStyles } from '../../../lib/config';
+import { getAppTimezone, getBins, getLocations } from '../../../lib/config';
 import { getSubmission, getSupabase } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { formatDateLabel, formatDateTime } from '../../../lib/time';
@@ -42,7 +42,7 @@ export default async function FormPage({ params }) {
 
   try {
     const timezone = getAppTimezone();
-    const styles = getStyles();
+    const bins = getBins();
     const locations = getLocations();
     const [submission, todayLabel] = await Promise.all([
       getSubmission(supabase, resolved.cycleId),
@@ -62,10 +62,9 @@ export default async function FormPage({ params }) {
       <ToppingForm
         token={token}
         cycleLabel={resolved.cycle.label || 'Kiosk check-in'}
-        styles={styles}
+        bins={bins}
         locations={locations}
         todayLabel={todayLabel}
-        requirePhoto
         existingSubmission={existingSubmission}
       />
     );

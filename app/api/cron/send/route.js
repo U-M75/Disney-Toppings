@@ -22,7 +22,7 @@ async function handle(request) {
     const now = new Date();
     const timezone = getAppTimezone();
     if (requestUrl.searchParams.get('guard') === 'pacific' && !isSendPacificWindow(now, timezone)) {
-      return json({ ok: true, skipped: true, reason: 'Outside the Thursday/Sunday 11 PM timezone window.' });
+      return json({ ok: true, skipped: true, reason: 'Outside the Thursday 10:45 PM / Sunday 11 PM timezone windows.' });
     }
 
     const supabase = getSupabase();
@@ -102,7 +102,7 @@ async function handle(request) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The alert could not be prepared.';
-    const isConfiguration = /required|must be|credentials|STYLES_JSON/i.test(message);
+    const isConfiguration = /required|must be|credentials/i.test(message);
     return json({ ok: false, error: isConfiguration ? message : 'The alert could not be prepared because Supabase or the application configuration is unavailable.' }, isConfiguration ? 500 : 503);
   }
 }

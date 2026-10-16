@@ -1,7 +1,8 @@
-import { getAppTimezone, getLocations, getStyles } from '../../../lib/config';
+import { getAppTimezone, getBins, getLocations } from '../../../lib/config';
 import { acquireLock, getCycle, getSubmission, getAllowedBlob, getSupabase, releaseLock, saveCycle, saveSubmission } from '../../../lib/supabase';
 import { resolveFormToken } from '../../../lib/token';
 import { cleanPersonName, isSafeVercelBlobUrl } from '../../../lib/validation';
+import { normalizeBinAnswers } from '../../../lib/bin-submission';
 import { postSubmissionResult, uploadSubmissionPhotos } from '../../../lib/slack';
 import { formatDateTime } from '../../../lib/time';
 
@@ -44,11 +45,11 @@ export async function POST(request) {
     return invalid(message, { token: message }, resolved.reason === 'expired' ? 410 : 401);
   }
 
-  let styles;
+  let bins;
   let locations;
   let timezone;
   try {
-    styles = getStyles();
+    bins = getBins();
     locations = getLocations();
     timezone = getAppTimezone();
   } catch (error) {
@@ -62,78 +63,17 @@ export async function POST(request) {
   else if (name.length > 80) fieldErrors.name = 'Use 80 characters or fewer for your name.';
   if (!locations.includes(location)) fieldErrors.location = 'Choose one of the listed locations.';
 
-  if (!Array.isArray(body.answers)) {
-    fieldErrors.answers = 'Answer every style before submitting.';
-    return invalid('Please complete the required fields.', fieldErrors);
-  }
-
-  const styleById = new Map(styles.map((style) => [style.id, style]));
-  const answerById = new Map();
-  for (const answer of body.answers) {
-    if (!answer || typeof answer !== 'object' || Array.isArray(answer) || typeof answer.styleId !== 'string') {
-      fieldErrors.answers = 'One or more style answers are not valid.';
-      continue;
+  const normalized = normalizeBinAnswers(body.answers, bins);
+  Object.assign(fieldErrors, normalized.fieldErrors);
+  const normalizedAnswers = normalized.answers;
+  for (const answer of normalizedAnswers) {
+    if (answer.photoUrl && !isSafeVercelBlobUrl(answer.photoUrl)) {
+      fieldErrors[answer.binId] = 'Upload the photo using this form before submitting.';
     }
-    if (!styleById.has(answer.styleId)) {
-      fieldErrors[answer.styleId] = 'This style is not part of the current form.';
-      continue;
-    }
-    if (answerById.has(answer.styleId)) {
-      fieldErrors[answer.styleId] = 'This style was included more than once. Refresh the form and try again.';
-      continue;
-    }
-    answerById.set(answer.styleId, answer);
-  }
-
-  if (body.answers.length !== styles.length) fieldErrors.answers = 'Exactly one answer is required for each of the 28 styles.';
-
-  const normalizedAnswers = [];
-  for (const style of styles) {
-    const answer = answerById.get(style.id);
-    if (!answer) {
-      fieldErrors[style.id] = 'Choose Needed or Not Needed.';
-      continue;
-    }
-    if (!['needed', 'not_needed'].includes(answer.status)) {
-      fieldErrors[style.id] = 'Choose Needed or Not Needed.';
-      continue;
-    }
-
-    const bin = answer.bin;
-    if (typeof bin !== 'number' || !Number.isInteger(bin) || bin < 1 || bin > 14) {
-      fieldErrors[style.id] = 'Choose a bin from 1 to 14.';
-    }
-    if (typeof answer.replaceForAge !== 'boolean') {
-      fieldErrors[style.id] = 'Choose Yes or No for replacement due to display time.';
-    }
-    const replaceForAge = answer.replaceForAge === true;
-    const photoUrl = typeof answer.photoUrl === 'string' && answer.photoUrl.trim() ? answer.photoUrl.trim() : undefined;
-    const needsPhoto = answer.status === 'needed' || replaceForAge;
-    if (needsPhoto) {
-      if (!photoUrl) fieldErrors[style.id] = 'Add a photo for a style marked Needed or Replace.';
-      if (photoUrl && !isSafeVercelBlobUrl(photoUrl)) fieldErrors[style.id] = 'Upload the photo using this form before submitting.';
-    } else if (photoUrl) {
-      fieldErrors[style.id] = 'Remove the photo or mark the style Needed/Replace.';
-    }
-
-    const bags = answer.bags;
-    if (typeof bags !== 'number' || !Number.isInteger(bags) || bags < 0 || bags > 9999) {
-      fieldErrors[style.id] = 'Enter bags remaining as a whole number from 0 to 9999.';
-    }
-
-    normalizedAnswers.push({
-      styleId: style.id,
-      styleName: style.name,
-      bin,
-      status: answer.status,
-      replaceForAge,
-      ...(photoUrl ? { photoUrl } : {}),
-      bags
-    });
   }
 
   if (Object.keys(fieldErrors).length > 0) {
-    return invalid('Please fix the highlighted fields before submitting.', fieldErrors);
+    return invalid('Answer Yes or No for every bin and upload a photo for each Yes.', fieldErrors);
   }
 
   const lock = `submit:${resolved.cycleId}`;
@@ -151,7 +91,7 @@ export async function POST(request) {
 
     for (const answer of normalizedAnswers) {
       if (answer.photoUrl && !await getAllowedBlob(supabase, resolved.cycleId, answer.photoUrl)) {
-        fieldErrors[answer.styleId] = 'This photo was not uploaded by this form. Please upload it again.';
+        fieldErrors[answer.binId] = 'This photo was not uploaded by this form. Please upload it again.';
       }
     }
     if (Object.keys(fieldErrors).length > 0) return invalid('Please upload the required photos again.', fieldErrors);
@@ -159,7 +99,7 @@ export async function POST(request) {
     const previousSubmission = await getSubmission(supabase, resolved.cycleId);
     const submittedAt = new Date().toISOString();
     const neededCount = normalizedAnswers.filter((answer) => answer.status === 'needed').length;
-    const replaceCount = normalizedAnswers.filter((answer) => answer.replaceForAge).length;
+    const notNeededCount = normalizedAnswers.filter((answer) => answer.status === 'not_needed').length;
     const submission = {
       cycleId: resolved.cycleId,
       name,
@@ -169,8 +109,7 @@ export async function POST(request) {
       timeZone: timezone,
       isUpdated: Boolean(previousSubmission),
       neededCount,
-      replaceCount,
-      notNeededCount: normalizedAnswers.filter((answer) => answer.status === 'not_needed').length
+      notNeededCount
     };
 
     try {
@@ -195,7 +134,7 @@ export async function POST(request) {
 
     let slackStatus = { status: 'failed', error: 'Your update was saved, but the Slack message could not be posted.' };
     try {
-      const posted = await postSubmissionResult({ cycle: updatedCycle, submission, styles });
+      const posted = await postSubmissionResult({ cycle: updatedCycle, submission, bins });
       const photoStatus = await uploadSubmissionPhotos({
         photos: posted.photos,
         channel: posted.channel,
@@ -231,20 +170,8 @@ export async function POST(request) {
       updated: submission.isUpdated,
       summary: {
         neededCount,
-        replaceCount,
-        notNeededCount: normalizedAnswers.filter((answer) => answer.status === 'not_needed').length,
-        neededStyles: normalizedAnswers.filter((answer) => answer.status === 'needed').map((answer) => ({
-          styleId: answer.styleId,
-          name: answer.styleName,
-          bin: answer.bin,
-          bags: answer.bags
-        })),
-        replaceStyles: normalizedAnswers.filter((answer) => answer.replaceForAge).map((answer) => ({
-          styleId: answer.styleId,
-          name: answer.styleName,
-          bin: answer.bin,
-          bags: answer.bags
-        })),
+        notNeededCount,
+        neededBins: normalizedAnswers.filter((answer) => answer.status === 'needed').map((answer) => answer.bin),
         submittedAtLabel: formatDateTime(new Date(submittedAt), timezone)
       },
       slack: slackStatus,
