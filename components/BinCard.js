@@ -9,15 +9,22 @@ export default function BinCard({
   token,
   testMode = false,
   onStatusChange,
-  onStyleNameChange,
-  onAddStyleName,
-  onRemoveStyleName,
+  onStyleChange,
+  onBagsRemainingChange,
+  onAddStyle,
+  onRemoveStyle,
   onPhotoChange,
   onUploadingChange
 }) {
   const errorId = `error-${bin.id}`;
+  const errorMessage = typeof error === 'string' ? error.toLowerCase() : '';
+  const styleError = errorMessage.includes('style');
+  const bagCountError = errorMessage.includes('bag');
+  const restockError = Boolean(error && !styleError && !bagCountError);
   const isNeeded = answer.status === 'needed';
-  const styleNames = Array.isArray(answer.styleNames) && answer.styleNames.length ? answer.styleNames : [''];
+  const styles = Array.isArray(answer.styles) && answer.styles.length
+    ? answer.styles
+    : [{ name: '', bagsRemaining: '' }];
 
   return (
     <article
@@ -31,27 +38,49 @@ export default function BinCard({
       </div>
 
       <div className="style-names-field">
-        <label className="field-label" htmlFor={`style-${bin.id}-0`}>Topping/style name <span className="optional-word">(optional)</span></label>
         <div className="style-name-list">
-          {styleNames.map((name, index) => (
-            <div className="style-name-row" key={`${bin.id}-style-${index}`}>
-              <input
-                className="form-control style-name-control"
-                id={`style-${bin.id}-${index}`}
-                type="text"
-                value={name}
-                maxLength={80}
-                autoComplete="off"
-                placeholder="Add a style name"
-                aria-label={`${bin.label}, topping/style name ${index + 1}`}
-                onChange={(event) => onStyleNameChange(bin.id, index, event.target.value)}
-              />
-              {styleNames.length > 1 && (
+          {styles.map((style, index) => (
+            <div className="style-entry-row" key={`${bin.id}-style-${index}`}>
+              <div className="style-entry-field style-name-cell">
+                <label htmlFor={`style-${bin.id}-${index}`}>Topping/style name <span className="optional-word">(optional)</span></label>
+                <input
+                  className="form-control style-name-control"
+                  id={`style-${bin.id}-${index}`}
+                  type="text"
+                  value={style.name}
+                  maxLength={80}
+                  autoComplete="off"
+                  placeholder="Style name"
+                  aria-label={`${bin.label}, topping/style name ${index + 1}`}
+                  aria-invalid={styleError}
+                  aria-describedby={styleError ? errorId : undefined}
+                  onChange={(event) => onStyleChange(bin.id, index, event.target.value)}
+                />
+              </div>
+              <div className="style-entry-field style-count-cell">
+                <label htmlFor={`bags-${bin.id}-${index}`}>Number of bags remaining <span className="required-word">(required if named)</span></label>
+                <input
+                  className="form-control bag-count-control"
+                  id={`bags-${bin.id}-${index}`}
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={style.bagsRemaining}
+                  placeholder="0"
+                  aria-label={`${bin.label}, number of bags remaining for style ${index + 1}`}
+                  aria-required={Boolean(style.name.trim())}
+                  aria-invalid={bagCountError}
+                  aria-describedby={bagCountError ? errorId : undefined}
+                  onChange={(event) => onBagsRemainingChange(bin.id, index, event.target.value)}
+                />
+              </div>
+              {styles.length > 1 && (
                 <button
                   className="remove-style-button"
                   type="button"
-                  aria-label={`Remove style name ${index + 1} from ${bin.label}`}
-                  onClick={() => onRemoveStyleName(bin.id, index)}
+                  aria-label={`Remove style ${index + 1} from ${bin.label}`}
+                  onClick={() => onRemoveStyle(bin.id, index)}
                 >
                   ×
                 </button>
@@ -59,12 +88,12 @@ export default function BinCard({
             </div>
           ))}
         </div>
-        <button className="add-style-button" type="button" onClick={() => onAddStyleName(bin.id)} disabled={styleNames.length >= 20}>
+        <button className="add-style-button" type="button" onClick={() => onAddStyle(bin.id)} disabled={styles.length >= 20}>
           + Add another style
         </button>
       </div>
 
-      <fieldset className="restock-fieldset" aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}>
+      <fieldset className="restock-fieldset" aria-invalid={restockError} aria-describedby={restockError ? errorId : undefined}>
         <legend>Restock Needed?</legend>
         <div className="restock-choice-row" role="group" aria-label={`Restock needed for ${bin.label}`}>
           <button

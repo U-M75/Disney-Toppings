@@ -1,6 +1,6 @@
 # KSC Disney Topping Update
 
-A mobile-first, KSC-branded Next.js app for the Disney team's end-of-day cart check. It has **28 fixed physical-bin cards**. Each card can contain multiple optional topping/style names, then a quick **Yes / No** answer for **“Restock Needed?”** A photo is required for each bin marked **Yes**; no photo is requested for **No**. Bag counts and display-time replacement fields are not part of the workflow.
+A mobile-first, KSC-branded Next.js app for the Disney team's end-of-day cart check. It has **28 fixed physical-bin cards**. Each card can contain multiple optional topping/style entries; whenever a style name is entered, its **whole-number “Number of bags remaining” count is required** (0 is allowed). Restock is answered **Yes / No once per physical bin**, not per style. A photo is required for each bin marked **Yes**; no photo is requested for **No**. Display-time replacement fields are not part of the workflow.
 
 Associate form links are signed, reusable for the configured period (72 hours by default), can update an existing submission, and have **no OTP step**. Submissions and bin/style data are stored in Supabase; photos are uploaded to Vercel Blob and posted to Slack. The separate **manager dashboard** is password-protected and shows the most recent 90 days of submissions. **No Redis/Upstash or Vercel Cron is used.**
 
@@ -8,13 +8,13 @@ Associate form links are signed, reusable for the configured period (72 hours by
 
 - Next.js 14.2.35 App Router, React 18.3.1, JavaScript, and plain CSS.
 - Fixed `Bin 1`–`Bin 28` configuration in `config/bins.js`; no topping names are invented.
-- Optional, repeatable topping/style-name inputs inside each bin card.
-- Required Yes/No answer for every bin; one photo for each Yes response.
+- Optional, repeatable topping/style entries inside each bin card; each named style requires a whole-number bag count (0 or greater).
+- Required Yes/No answer once per physical bin; one photo for each Yes response.
 - Signed `cycleId.hmac` form links, configurable expiry, local draft recovery, reusable links, and update-on-resubmit behavior.
-- Manager-only `/dashboard` with an environment-configured password, expiring HttpOnly session cookie, latest check overview, location/search filters, and up to 90 days of submission history.
+- Manager-only `/dashboard` with an environment-configured password, expiring HttpOnly session cookie, latest check overview, location/search filters, and up to 90 days of submission history including per-style bag counts.
 - Same-origin Vercel Blob uploads, image compression (1600 px longest edge / quality 0.8), HEIC/HEIF-to-JPEG conversion when needed, a 4 MiB compressed request cap, 5 MB storage limit, and authorized photo cleanup.
 - Supabase Postgres storage for cycles, submissions, photo ownership, and idempotency locks; old records are pruned after 90 days.
-- Slack alert-thread result with a 28-bin/style-name summary, native photo attachments, photo-link fallback, and optional results-channel mirror.
+- Slack alert-thread result with a 28-bin/style/bag-count summary, native photo attachments, photo-link fallback, and optional results-channel mirror.
 - Protected alert/reminder routes, `/api/health`, and an optional temporary Slack test flow.
 - Associate forms remain OTP-free. No Slack Workflow Builder, Events API, interactive endpoint, slash command, Redis/Upstash, `vercel.json` cron, or Vercel Cron configuration.
 
@@ -101,7 +101,7 @@ openssl rand -base64 48
 
 ## Manager dashboard
 
-Open `/dashboard` and sign in with the manager password configured as `DASHBOARD_SECRET`. The dashboard session is an HttpOnly cookie that expires after 12 hours. The dashboard shows the latest check, searchable/filterable submission history for up to 90 days, bin status, optional style names, and whether a photo was submitted. It does not add OTP to the associate form. If `DASHBOARD_SECRET` is unset, the dashboard remains unavailable and displays a setup message.
+Open `https://<your-deployed-domain>/dashboard` and sign in with the manager password configured as `DASHBOARD_SECRET` (not your Vercel account password). If it is not set yet, add it in Vercel → Project → Settings → Environment Variables, then redeploy. Keep the value private; do not put it in chat. The dashboard session is an HttpOnly cookie that expires after 12 hours. The dashboard shows the latest check, searchable/filterable submission history for up to 90 days, bin status, per-style bag counts, and whether a photo was submitted. It does not add OTP to the associate form. If `DASHBOARD_SECRET` is unset, the dashboard displays a setup message.
 
 ## Existing cron-job.org schedule
 
@@ -120,7 +120,7 @@ A manual `GET APP_BASE_URL/api/cron/send?force=1` with the existing bearer heade
 - `GET /f/[token]` — verifies the HMAC-signed associate form link and expiry server-side. Links are reusable for the configured period (72 hours by default) and can update a prior submission; there is no OTP step.
 - `POST /api/upload` — authorizes the signed link and stores a JPEG/PNG/WebP/HEIC photo in Vercel Blob. Submission accepts only safe photo URLs registered for that cycle.
 - `POST /api/upload/delete` — best-effort cleanup when a worker removes a photo or changes a Yes answer to No.
-- `POST /api/submit` — validates employee name, location, exactly one Yes/No answer for every bin, optional topping/style name lists, and a photo for every Yes (no photo for No). It saves in Supabase before Slack delivery, so Slack failure does not discard the submission. A later submission updates the existing response.
+- `POST /api/submit` — validates employee name, location, exactly one Yes/No answer for every bin, optional topping/style entries with required whole-number bag counts for named styles (0 allowed), and a photo for every Yes (no photo for No). It saves in Supabase before Slack delivery, so Slack failure does not discard the submission. A later submission updates the existing response.
 - `GET /dashboard` — manager-only dashboard; requires `DASHBOARD_SECRET` and reads the 90-day submission history server-side.
 - `GET /api/health` — returns environment-presence booleans and Supabase reachability only.
 - `POST /api/test/start` and `/api/test/submit` — temporary Slack/form test routes, enabled only by `ENABLE_SLACK_TEST_MODE=true`; test responses do not write to the database and photos are disabled. The UI is at `/test-console` and uses the `CRON_SECRET` flow.
@@ -128,9 +128,9 @@ A manual `GET APP_BASE_URL/api/cron/send?force=1` with the existing bearer heade
 ## Smoke test
 
 1. Check `/api/health`; confirm Supabase is reachable and expected environment variables are present. No secret values are returned.
-2. Open the current Slack form link on a phone. Confirm the calmer form layout, date, location, Bin 1–28 cards, and optional multiple style-name inputs. Mark Yes or No for all bins, upload a photo for every Yes, and none for a No.
-3. Submit. Confirm the success summary lists bins marked Yes and Slack receives a 28-row bin/style/status summary with native photo files. If Slack file upload is unavailable, photo links should be posted in the thread and the Supabase submission should remain saved.
-4. Reopen the same link before expiry. Change a style name or answer and resubmit. Confirm Slack labels it as updated and Supabase holds the latest response. The default link validity is 72 hours.
+2. Open the current Slack form link on a phone. Confirm the calmer form layout, date, location, Bin 1–28 cards, and optional repeatable style entries. For each name entered, enter a whole-number bag count (0 allowed). Mark Yes or No once per bin, upload a photo for every Yes, and none for a No.
+3. Submit. Confirm the success summary lists bins marked Yes and Slack receives a 28-row bin/style/bag-count/status summary with native photo files. If Slack file upload is unavailable, photo links should be posted in the thread and the Supabase submission should remain saved.
+4. Reopen the same link before expiry. Change a style name, its bag count, or a bin answer and resubmit. Confirm Slack labels it as updated and Supabase holds the latest response. The default link validity is 72 hours.
 5. Set a private `DASHBOARD_SECRET` in Vercel, redeploy, sign in at `/dashboard`, and verify the latest check and recent 90-day submissions. Confirm sign-out removes dashboard access. Do not share the dashboard password in chat.
 6. If test mode is intentionally enabled, use `/test-console` with `CRON_SECRET`, follow the clearly labeled Slack test thread, mark bins Yes/No, and submit. Confirm no database write or photo upload. Disable test mode and redeploy when finished.
 7. Test expiry only in a non-production environment by shortening `FORM_LINK_VALID_HOURS`; restore the live default afterwards. Keep the already-enabled cron-job.org schedule in place.
@@ -142,7 +142,7 @@ The temporary test checks the UI and Slack thread only. It does not exercise Blo
 1. Confirm the configured alert channel is appropriate for a clearly labeled test and the bot is invited there.
 2. Set `ENABLE_SLACK_TEST_MODE=true` in Vercel and redeploy.
 3. Open `https://YOUR-PRODUCTION-DOMAIN/test-console`. Enter `CRON_SECRET` directly into the HTTPS page (never paste it into chat) and send a test alert.
-4. In Slack, open the test form from its thread, optionally list style names, answer Yes/No for Bin 1–28, and submit. Confirm the Slack reply is clearly marked test-only; no database record is created and photos are disabled.
+4. In Slack, open the test form from its thread, optionally enter a style name and whole-number bag count (0 allowed), answer Yes/No for Bin 1–28, and submit. Confirm the Slack reply is clearly marked test-only; no database record is created and photos are disabled.
 5. Set `ENABLE_SLACK_TEST_MODE=false` or remove it, then redeploy. Do not leave test mode enabled longer than needed.
 
 Test form tokens are signed with `FORM_SECRET`, restricted to the configured Slack channel, and expire in 30 minutes.

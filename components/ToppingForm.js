@@ -5,12 +5,36 @@ import BinCard from './BinCard';
 import ProgressBar from './ProgressBar';
 
 function emptyAnswers(bins) {
-  return Object.fromEntries(bins.map((bin) => [bin.id, { status: '', styleNames: [''], photoUrl: '' }]));
+  return Object.fromEntries(bins.map((bin) => [bin.id, {
+    status: '',
+    styles: [{ name: '', bagsRemaining: '' }],
+    photoUrl: ''
+  }]));
 }
 
 function isCompleteAnswer(answer, testMode) {
   if (!answer?.status) return false;
+  const styles = Array.isArray(answer.styles) ? answer.styles : [];
+  const stylesComplete = styles.every((style) => {
+    const name = typeof style?.name === 'string' ? style.name.trim() : '';
+    const count = typeof style?.bagsRemaining === 'string' ? style.bagsRemaining.trim() : '';
+    if (!name && !count) return true;
+    if (!name || !/^\d+$/.test(count)) return false;
+    return Number.isSafeInteger(Number(count)) && name.length <= 80;
+  });
+  if (!stylesComplete) return false;
   return testMode || answer.status !== 'needed' || Boolean(answer.photoUrl);
+}
+
+function draftStyleEntry(style, fallbackName = '') {
+  const name = typeof style?.name === 'string' ? style.name.slice(0, 80) : fallbackName.slice(0, 80);
+  const bags = style?.bagsRemaining;
+  const bagsRemaining = Number.isSafeInteger(bags) && bags >= 0
+    ? String(bags)
+    : typeof bags === 'string'
+      ? bags.slice(0, 32)
+      : '';
+  return { name, bagsRemaining };
 }
 
 function deletePhotoBestEffort(token, url) {
@@ -57,11 +81,20 @@ export default function ToppingForm({
         for (const bin of bins) {
           const savedAnswer = draft?.answers?.[bin.id];
           if (savedAnswer && ['', 'needed', 'not_needed'].includes(savedAnswer.status)) {
+            let styles = [];
+            if (Array.isArray(savedAnswer.styles)) {
+              styles = savedAnswer.styles.slice(0, 20).map((style) => draftStyleEntry(style));
+            } else if (Array.isArray(savedAnswer.styleNames)) {
+              styles = savedAnswer.styleNames
+                .filter((name) => typeof name === 'string')
+                .slice(0, 20)
+                .map((name, index) => draftStyleEntry({
+                  bagsRemaining: Array.isArray(savedAnswer.bagsRemaining) ? savedAnswer.bagsRemaining[index] : ''
+                }, name));
+            }
             answers[bin.id] = {
               status: savedAnswer.status,
-              styleNames: Array.isArray(savedAnswer.styleNames)
-                ? savedAnswer.styleNames.filter((name) => typeof name === 'string').slice(0, 20)
-                : [''],
+              styles: styles.length ? styles : [{ name: '', bagsRemaining: '' }],
               photoUrl: typeof savedAnswer.photoUrl === 'string' ? savedAnswer.photoUrl : ''
             };
           }
@@ -134,37 +167,63 @@ export default function ToppingForm({
     clearBinError(binId);
   }
 
-  function onStyleNameChange(binId, index, value) {
+  function updateStyleEntry(binId, index, field, value) {
     updateForm((current) => {
-      const currentNames = current.answers[binId]?.styleNames?.length ? current.answers[binId].styleNames : [''];
-      const styleNames = [...currentNames];
-      styleNames[index] = value;
+      const currentStyles = current.answers[binId]?.styles?.length
+        ? current.answers[binId].styles
+        : [{ name: '', bagsRemaining: '' }];
+      const styles = [...currentStyles];
+      styles[index] = { ...styles[index], [field]: value };
       return {
         ...current,
-        answers: { ...current.answers, [binId]: { ...current.answers[binId], styleNames } }
+        answers: { ...current.answers, [binId]: { ...current.answers[binId], styles } }
       };
     });
     clearBinError(binId);
   }
 
-  function onAddStyleName(binId) {
+  function onStyleChange(binId, index, value) {
+    updateStyleEntry(binId, index, 'name', value);
+  }
+
+  function onBagsRemainingChange(binId, index, value) {
+    updateStyleEntry(binId, index, 'bagsRemaining', value);
+  }
+
+  function onAddStyle(binId) {
     updateForm((current) => {
-      const currentNames = current.answers[binId]?.styleNames?.length ? current.answers[binId].styleNames : [''];
-      if (currentNames.length >= 20) return current;
+      const currentStyles = current.answers[binId]?.styles?.length
+        ? current.answers[binId].styles
+        : [{ name: '', bagsRemaining: '' }];
+      if (currentStyles.length >= 20) return current;
       return {
         ...current,
-        answers: { ...current.answers, [binId]: { ...current.answers[binId], styleNames: [...currentNames, ''] } }
+        answers: {
+          ...current.answers,
+          [binId]: {
+            ...current.answers[binId],
+            styles: [...currentStyles, { name: '', bagsRemaining: '' }]
+          }
+        }
       };
     });
   }
 
-  function onRemoveStyleName(binId, index) {
+  function onRemoveStyle(binId, index) {
     updateForm((current) => {
-      const currentNames = current.answers[binId]?.styleNames?.length ? current.answers[binId].styleNames : [''];
-      const styleNames = currentNames.filter((_, currentIndex) => currentIndex !== index);
+      const currentStyles = current.answers[binId]?.styles?.length
+        ? current.answers[binId].styles
+        : [{ name: '', bagsRemaining: '' }];
+      const styles = currentStyles.filter((_, currentIndex) => currentIndex !== index);
       return {
         ...current,
-        answers: { ...current.answers, [binId]: { ...current.answers[binId], styleNames: styleNames.length ? styleNames : [''] } }
+        answers: {
+          ...current.answers,
+          [binId]: {
+            ...current.answers[binId],
+            styles: styles.length ? styles : [{ name: '', bagsRemaining: '' }]
+          }
+        }
       };
     });
     clearBinError(binId);
@@ -187,8 +246,17 @@ export default function ToppingForm({
     const firstBin = bins.find((bin) => fieldErrors[bin.id]);
     if (firstBin) {
       const card = document.querySelector(`[data-bin-id="${firstBin.id}"]`);
+      const message = String(fieldErrors[firstBin.id]).toLowerCase();
+      const selector = message.includes('style name')
+        ? '.style-name-control'
+        : message.includes('bag')
+          ? '.bag-count-control'
+          : message.includes('style')
+            ? '.style-name-control'
+            : '.restock-choice';
+      const control = card?.querySelector(selector) || card?.querySelector('.restock-choice');
       card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      card?.querySelector('.restock-choice')?.focus({ preventScroll: true });
+      control?.focus({ preventScroll: true });
       return;
     }
     if (fieldErrors.name) {
@@ -211,21 +279,41 @@ export default function ToppingForm({
     if (!locations.includes(form.location)) fieldErrors.location = 'Choose one of the listed locations.';
 
     for (const bin of bins) {
-      const answer = form.answers[bin.id] || { status: '', styleNames: [], photoUrl: '' };
-      if (!['needed', 'not_needed'].includes(answer.status)) {
-        fieldErrors[bin.id] = 'Tap Yes or No for this bin.';
-        continue;
+      const answer = form.answers[bin.id] || { status: '', styles: [], photoUrl: '' };
+      for (const style of Array.isArray(answer.styles) ? answer.styles : []) {
+        const styleName = typeof style?.name === 'string' ? style.name.trim().replace(/\s+/g, ' ') : '';
+        const bagText = typeof style?.bagsRemaining === 'string' ? style.bagsRemaining.trim() : '';
+        if (!styleName && !bagText) continue;
+        if (!styleName) {
+          fieldErrors[bin.id] = 'Enter a topping/style name for every bag count.';
+          break;
+        }
+        if (styleName.length > 80) {
+          fieldErrors[bin.id] = 'Each topping/style name must be 80 characters or fewer.';
+          break;
+        }
+        if (!bagText) {
+          fieldErrors[bin.id] = 'Enter the number of bags remaining for each style.';
+          break;
+        }
+        if (!/^\d+$/.test(bagText) || !Number.isSafeInteger(Number(bagText))) {
+          fieldErrors[bin.id] = 'Bag counts must be whole numbers greater than or equal to 0.';
+          break;
+        }
       }
-      if (answer.status === 'needed' && !testMode && !answer.photoUrl) {
+      if (!['needed', 'not_needed'].includes(answer.status) && !fieldErrors[bin.id]) {
+        fieldErrors[bin.id] = 'Tap Yes or No for this bin.';
+      }
+      if (answer.status === 'needed' && !testMode && !answer.photoUrl && !fieldErrors[bin.id]) {
         fieldErrors[bin.id] = 'Upload a photo for every bin marked Yes.';
-      } else if (answer.status === 'not_needed' && answer.photoUrl) {
+      } else if (answer.status === 'not_needed' && answer.photoUrl && !fieldErrors[bin.id]) {
         fieldErrors[bin.id] = 'Remove the photo or mark this bin Yes.';
       }
     }
 
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
-      setSubmitError('Answer Yes or No for each bin and upload a photo for every Yes.');
+      setSubmitError('Enter a bag count for every named style, answer Yes or No for each bin, and upload a photo for every Yes.');
       scrollToFirstError(fieldErrors);
       return;
     }
@@ -235,11 +323,17 @@ export default function ToppingForm({
     setIsSubmitting(true);
     const answers = bins.map((bin) => {
       const answer = form.answers[bin.id];
+      const styles = Array.isArray(answer.styles)
+        ? answer.styles.flatMap((style) => {
+          const styleName = typeof style?.name === 'string' ? style.name.trim().replace(/\s+/g, ' ') : '';
+          const bagText = typeof style?.bagsRemaining === 'string' ? style.bagsRemaining.trim() : '';
+          if (!styleName || !bagText) return [];
+          return [{ name: styleName, bagsRemaining: Number(bagText) }];
+        }).slice(0, 20)
+        : [];
       return {
         bin: bin.number,
-        styleNames: Array.isArray(answer.styleNames)
-          ? answer.styleNames.map((value) => value.trim().replace(/\s+/g, ' ')).filter(Boolean).slice(0, 20)
-          : [],
+        styles,
         status: answer.status,
         ...(answer.status === 'needed' && answer.photoUrl ? { photoUrl: answer.photoUrl } : {})
       };
@@ -300,8 +394,9 @@ export default function ToppingForm({
               <ul className="success-list">
                 {neededBins.map((item) => {
                   const number = typeof item === 'number' ? item : item.bin;
-                  const names = typeof item === 'object' && Array.isArray(item.styleNames) ? item.styleNames : [];
-                  return <li key={number}>Bin {number}{names.length ? ` · ${names.join(', ')}` : ''}</li>;
+                  const styles = typeof item === 'object' && Array.isArray(item.styles) ? item.styles : [];
+                  const styleSummary = styles.map((style) => `${style.name} (${style.bagsRemaining} bag${style.bagsRemaining === 1 ? '' : 's'} remaining)`).join(', ');
+                  return <li key={number}>Bin {number}{styleSummary ? ` · ${styleSummary}` : ''}</li>;
                 })}
               </ul>
             ) : <p className="nothing-needed">No bins were marked for restock.</p>}
@@ -327,7 +422,7 @@ export default function ToppingForm({
         <div className="hero-decoration hero-sparkle" aria-hidden="true">✦</div>
         <p className="eyebrow">{testMode ? 'Temporary test — not saved' : cycleLabel}</p>
         <h1>Topping Update</h1>
-        <p>{testMode ? 'Try the bin check and Slack summary. Responses are not saved and photos are disabled.' : 'List the style names in each bin if needed. Mark Yes or No for restock; add a photo for every Yes.'}</p>
+        <p>{testMode ? 'Try the bin check and Slack summary. Responses are not saved and photos are disabled.' : 'List optional style names and enter the remaining bag count for each named style. Mark Yes or No for restock; add a photo for every Yes.'}</p>
         <span className="hero-badge">{testMode ? 'Test only · no database save' : 'End-of-day bin check'}</span>
       </header>
 
@@ -411,7 +506,7 @@ export default function ToppingForm({
             <div>
               <p className="eyebrow">Cart inventory</p>
               <h2 id="bins-title">Check bins 1–28</h2>
-              <p className="section-help">Style names are optional. Add more than one name when a bin holds multiple styles. Yes means a restock photo is required.</p>
+              <p className="section-help">Style names are optional. If you enter a style, record its remaining bags as a whole number (0 is allowed). Restock is answered once per physical bin, and Yes requires a photo.</p>
             </div>
             <span className="section-heart" aria-hidden="true">✧</span>
           </div>
@@ -421,14 +516,15 @@ export default function ToppingForm({
               <BinCard
                 key={bin.id}
                 bin={bin}
-                answer={form.answers[bin.id] || { status: '', styleNames: [''], photoUrl: '' }}
+                answer={form.answers[bin.id] || { status: '', styles: [{ name: '', bagsRemaining: '' }], photoUrl: '' }}
                 error={errors[bin.id] || ''}
                 token={token}
                 testMode={testMode}
                 onStatusChange={onStatusChange}
-                onStyleNameChange={onStyleNameChange}
-                onAddStyleName={onAddStyleName}
-                onRemoveStyleName={onRemoveStyleName}
+                onStyleChange={onStyleChange}
+                onBagsRemainingChange={onBagsRemainingChange}
+                onAddStyle={onAddStyle}
+                onRemoveStyle={onRemoveStyle}
                 onPhotoChange={onPhotoChange}
                 onUploadingChange={onUploadingChange}
               />

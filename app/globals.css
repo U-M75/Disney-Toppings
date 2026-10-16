@@ -370,26 +370,46 @@ h3 {
   margin-bottom: 10px;
 }
 
-.style-names-field .field-label {
-  margin-bottom: 5px;
-  font-size: 0.72rem;
-}
-
 .style-name-list {
   display: grid;
-  gap: 5px;
+  gap: 8px;
 }
 
-.style-name-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.style-entry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(92px, 0.72fr) auto;
+  align-items: end;
+  gap: 6px;
 }
 
-.style-name-control {
+.style-entry-field {
+  min-width: 0;
+}
+
+.style-entry-field label {
+  display: block;
+  min-height: 29px;
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.22;
+}
+
+.style-entry-field .optional-word,
+.style-entry-field .required-word {
+  font-size: 0.9em;
+}
+
+.style-name-control,
+.bag-count-control {
   min-height: 35px;
-  padding: 6px 8px;
-  font-size: 0.78rem;
+  padding: 6px 7px;
+  font-size: 0.74rem;
+}
+
+.bag-count-control {
+  padding-right: 3px;
 }
 
 .remove-style-button {

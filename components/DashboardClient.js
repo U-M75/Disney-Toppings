@@ -22,7 +22,10 @@ function textForSearch(submission) {
     submission.name,
     submission.location,
     submission.cycleId,
-    ...submission.answers.flatMap((answer) => [`Bin ${answer.bin}`, ...answer.styleNames])
+    ...submission.answers.flatMap((answer) => [
+      `Bin ${answer.bin}`,
+      ...answer.styles.flatMap((style) => [style.name, style.bagsRemaining === null ? '' : String(style.bagsRemaining)])
+    ])
   ].join(' ').toLowerCase();
 }
 
@@ -114,7 +117,7 @@ export default function DashboardClient() {
         </div>
       </header>
 
-      <p className="dashboard-intro">Review associate submissions by location, see bins marked for restock, and find style names at a glance.</p>
+      <p className="dashboard-intro">Review associate submissions by location, see bins marked for restock, and check style names with their remaining bag counts.</p>
 
       {error && <p className="dashboard-error" role="alert">{error}</p>}
 
@@ -202,7 +205,7 @@ export default function DashboardClient() {
                   <article className="dashboard-bin-row" key={`${selectedSubmission.cycleId}-${answer.bin}`}>
                     <div className="dashboard-bin-name">
                       <strong>{answer.label}</strong>
-                      <span>{answer.styleNames.length ? answer.styleNames.join(', ') : 'No style names entered'}</span>
+                      <span>{answer.styles.length ? answer.styles.map((style) => `${style.name} · ${style.bagsRemaining === null ? 'bag count not recorded' : `${style.bagsRemaining} bag${style.bagsRemaining === 1 ? '' : 's'} remaining`}`).join('; ') : 'No style names entered'}</span>
                     </div>
                     <span className={`dashboard-status ${answer.status === 'needed' ? 'dashboard-status-needed' : 'dashboard-status-clear'}`}>
                       {answer.status === 'needed' ? 'Yes · Restock' : 'No · Clear'}

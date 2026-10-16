@@ -173,7 +173,7 @@ export async function POST(request) {
         notNeededCount,
         neededBins: normalizedAnswers.filter((answer) => answer.status === 'needed').map((answer) => ({
           bin: answer.bin,
-          styleNames: answer.styleNames
+          styles: answer.styles
         })),
         submittedAtLabel: formatDateTime(new Date(submittedAt), timezone)
       },

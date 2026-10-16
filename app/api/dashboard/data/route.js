@@ -21,13 +21,23 @@ function normalizeSubmission(row, binsByNumber) {
   const normalizedAnswers = answers.map((answer) => {
     const binNumber = Number(answer?.bin);
     if (!Number.isInteger(binNumber) || !binsByNumber.has(binNumber)) return null;
-    const styleNames = Array.isArray(answer.styleNames)
-      ? answer.styleNames.slice(0, 20).map((name) => safeText(name, 80)).filter(Boolean)
-      : [];
+    const styles = Array.isArray(answer.styles)
+      ? answer.styles.slice(0, 20).map((style) => ({
+        name: safeText(style?.name, 80),
+        bagsRemaining: Number.isSafeInteger(style?.bagsRemaining) && style.bagsRemaining >= 0 ? style.bagsRemaining : null
+      })).filter((style) => style.name)
+      : Array.isArray(answer.styleNames)
+        ? answer.styleNames.slice(0, 20).map((name, index) => ({
+          name: safeText(name, 80),
+          bagsRemaining: Array.isArray(answer.bagsRemaining) && Number.isSafeInteger(answer.bagsRemaining[index]) && answer.bagsRemaining[index] >= 0
+            ? answer.bagsRemaining[index]
+            : null
+        })).filter((style) => style.name)
+        : [];
     return {
       bin: binNumber,
       label: binsByNumber.get(binNumber),
-      styleNames,
+      styles,
       status: answer.status === 'needed' ? 'needed' : 'not_needed',
       hasPhoto: typeof answer.photoUrl === 'string' && Boolean(answer.photoUrl.trim())
     };
