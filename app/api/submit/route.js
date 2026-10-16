@@ -171,7 +171,10 @@ export async function POST(request) {
       summary: {
         neededCount,
         notNeededCount,
-        neededBins: normalizedAnswers.filter((answer) => answer.status === 'needed').map((answer) => answer.bin),
+        neededBins: normalizedAnswers.filter((answer) => answer.status === 'needed').map((answer) => ({
+          bin: answer.bin,
+          styleNames: answer.styleNames
+        })),
         submittedAtLabel: formatDateTime(new Date(submittedAt), timezone)
       },
       slack: slackStatus,

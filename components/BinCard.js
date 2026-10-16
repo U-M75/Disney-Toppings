@@ -9,11 +9,15 @@ export default function BinCard({
   token,
   testMode = false,
   onStatusChange,
+  onStyleNameChange,
+  onAddStyleName,
+  onRemoveStyleName,
   onPhotoChange,
   onUploadingChange
 }) {
   const errorId = `error-${bin.id}`;
   const isNeeded = answer.status === 'needed';
+  const styleNames = Array.isArray(answer.styleNames) && answer.styleNames.length ? answer.styleNames : [''];
 
   return (
     <article
@@ -23,6 +27,41 @@ export default function BinCard({
     >
       <div className="bin-card-heading">
         <h2 className="bin-card-title" id={`title-${bin.id}`}>{bin.label}</h2>
+        {answer.status && <span className={`bin-state ${isNeeded ? 'bin-state-needed' : 'bin-state-clear'}`}>{isNeeded ? 'Restock' : 'No restock'}</span>}
+      </div>
+
+      <div className="style-names-field">
+        <label className="field-label" htmlFor={`style-${bin.id}-0`}>Topping/style name <span className="optional-word">(optional)</span></label>
+        <div className="style-name-list">
+          {styleNames.map((name, index) => (
+            <div className="style-name-row" key={`${bin.id}-style-${index}`}>
+              <input
+                className="form-control style-name-control"
+                id={`style-${bin.id}-${index}`}
+                type="text"
+                value={name}
+                maxLength={80}
+                autoComplete="off"
+                placeholder="Add a style name"
+                aria-label={`${bin.label}, topping/style name ${index + 1}`}
+                onChange={(event) => onStyleNameChange(bin.id, index, event.target.value)}
+              />
+              {styleNames.length > 1 && (
+                <button
+                  className="remove-style-button"
+                  type="button"
+                  aria-label={`Remove style name ${index + 1} from ${bin.label}`}
+                  onClick={() => onRemoveStyleName(bin.id, index)}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button className="add-style-button" type="button" onClick={() => onAddStyleName(bin.id)} disabled={styleNames.length >= 20}>
+          + Add another style
+        </button>
       </div>
 
       <fieldset className="restock-fieldset" aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}>

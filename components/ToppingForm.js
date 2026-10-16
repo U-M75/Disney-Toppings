@@ -5,7 +5,7 @@ import BinCard from './BinCard';
 import ProgressBar from './ProgressBar';
 
 function emptyAnswers(bins) {
-  return Object.fromEntries(bins.map((bin) => [bin.id, { status: '', photoUrl: '' }]));
+  return Object.fromEntries(bins.map((bin) => [bin.id, { status: '', styleNames: [''], photoUrl: '' }]));
 }
 
 function isCompleteAnswer(answer, testMode) {
@@ -59,6 +59,9 @@ export default function ToppingForm({
           if (savedAnswer && ['', 'needed', 'not_needed'].includes(savedAnswer.status)) {
             answers[bin.id] = {
               status: savedAnswer.status,
+              styleNames: Array.isArray(savedAnswer.styleNames)
+                ? savedAnswer.styleNames.filter((name) => typeof name === 'string').slice(0, 20)
+                : [''],
               photoUrl: typeof savedAnswer.photoUrl === 'string' ? savedAnswer.photoUrl : ''
             };
           }
@@ -131,6 +134,42 @@ export default function ToppingForm({
     clearBinError(binId);
   }
 
+  function onStyleNameChange(binId, index, value) {
+    updateForm((current) => {
+      const currentNames = current.answers[binId]?.styleNames?.length ? current.answers[binId].styleNames : [''];
+      const styleNames = [...currentNames];
+      styleNames[index] = value;
+      return {
+        ...current,
+        answers: { ...current.answers, [binId]: { ...current.answers[binId], styleNames } }
+      };
+    });
+    clearBinError(binId);
+  }
+
+  function onAddStyleName(binId) {
+    updateForm((current) => {
+      const currentNames = current.answers[binId]?.styleNames?.length ? current.answers[binId].styleNames : [''];
+      if (currentNames.length >= 20) return current;
+      return {
+        ...current,
+        answers: { ...current.answers, [binId]: { ...current.answers[binId], styleNames: [...currentNames, ''] } }
+      };
+    });
+  }
+
+  function onRemoveStyleName(binId, index) {
+    updateForm((current) => {
+      const currentNames = current.answers[binId]?.styleNames?.length ? current.answers[binId].styleNames : [''];
+      const styleNames = currentNames.filter((_, currentIndex) => currentIndex !== index);
+      return {
+        ...current,
+        answers: { ...current.answers, [binId]: { ...current.answers[binId], styleNames: styleNames.length ? styleNames : [''] } }
+      };
+    });
+    clearBinError(binId);
+  }
+
   function onPhotoChange(binId, photoUrl) {
     updateForm((current) => ({
       ...current,
@@ -172,7 +211,7 @@ export default function ToppingForm({
     if (!locations.includes(form.location)) fieldErrors.location = 'Choose one of the listed locations.';
 
     for (const bin of bins) {
-      const answer = form.answers[bin.id] || { status: '', photoUrl: '' };
+      const answer = form.answers[bin.id] || { status: '', styleNames: [], photoUrl: '' };
       if (!['needed', 'not_needed'].includes(answer.status)) {
         fieldErrors[bin.id] = 'Tap Yes or No for this bin.';
         continue;
@@ -198,6 +237,9 @@ export default function ToppingForm({
       const answer = form.answers[bin.id];
       return {
         bin: bin.number,
+        styleNames: Array.isArray(answer.styleNames)
+          ? answer.styleNames.map((value) => value.trim().replace(/\s+/g, ' ')).filter(Boolean).slice(0, 20)
+          : [],
         status: answer.status,
         ...(answer.status === 'needed' && answer.photoUrl ? { photoUrl: answer.photoUrl } : {})
       };
@@ -256,7 +298,11 @@ export default function ToppingForm({
             <h2>Bins to restock</h2>
             {neededBins.length ? (
               <ul className="success-list">
-                {neededBins.map((number) => <li key={number}>Bin {number}</li>)}
+                {neededBins.map((item) => {
+                  const number = typeof item === 'number' ? item : item.bin;
+                  const names = typeof item === 'object' && Array.isArray(item.styleNames) ? item.styleNames : [];
+                  return <li key={number}>Bin {number}{names.length ? ` · ${names.join(', ')}` : ''}</li>;
+                })}
               </ul>
             ) : <p className="nothing-needed">No bins were marked for restock.</p>}
           </div>
@@ -281,7 +327,7 @@ export default function ToppingForm({
         <div className="hero-decoration hero-sparkle" aria-hidden="true">✦</div>
         <p className="eyebrow">{testMode ? 'Temporary test — not saved' : cycleLabel}</p>
         <h1>Topping Update</h1>
-        <p>{testMode ? 'Test the quick bin check and Slack reply. Responses are not saved and photos are disabled.' : 'Quick end-of-day check: tap Yes or No for each bin. Upload a photo for every Yes.'}</p>
+        <p>{testMode ? 'Try the bin check and Slack summary. Responses are not saved and photos are disabled.' : 'List the style names in each bin if needed. Mark Yes or No for restock; add a photo for every Yes.'}</p>
         <span className="hero-badge">{testMode ? 'Test only · no database save' : 'End-of-day bin check'}</span>
       </header>
 
@@ -365,7 +411,7 @@ export default function ToppingForm({
             <div>
               <p className="eyebrow">Cart inventory</p>
               <h2 id="bins-title">Check bins 1–28</h2>
-              <p className="section-help">Tap Yes if the bin needs restocking, otherwise tap No. Add a photo for every Yes.</p>
+              <p className="section-help">Style names are optional. Add more than one name when a bin holds multiple styles. Yes means a restock photo is required.</p>
             </div>
             <span className="section-heart" aria-hidden="true">✧</span>
           </div>
@@ -375,11 +421,14 @@ export default function ToppingForm({
               <BinCard
                 key={bin.id}
                 bin={bin}
-                answer={form.answers[bin.id] || { status: '', photoUrl: '' }}
+                answer={form.answers[bin.id] || { status: '', styleNames: [''], photoUrl: '' }}
                 error={errors[bin.id] || ''}
                 token={token}
                 testMode={testMode}
                 onStatusChange={onStatusChange}
+                onStyleNameChange={onStyleNameChange}
+                onAddStyleName={onAddStyleName}
+                onRemoveStyleName={onRemoveStyleName}
                 onPhotoChange={onPhotoChange}
                 onUploadingChange={onUploadingChange}
               />

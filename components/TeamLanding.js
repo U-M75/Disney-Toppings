@@ -11,7 +11,8 @@ export default function TeamLanding() {
           <ol className="landing-steps">
             <li>Open the latest <strong>Topping Update</strong> message in your Disney team Slack channel.</li>
             <li>Select <strong>Open update form</strong> in that message.</li>
-            <li>Open the Bin 1–28 check and tap Yes or No for “Restock Needed?” on each bin.</li>
+            <li>On each of the 28 physical bins, optionally enter one or more topping/style names.</li>
+            <li>Tap Yes or No for “Restock Needed?” once per bin. The answer applies to the whole bin, not each style.</li>
             <li>Add a photo for every bin marked Yes, then submit the update.</li>
           </ol>
         </div>
